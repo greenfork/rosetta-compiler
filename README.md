@@ -1,6 +1,6 @@
 # Rosetta compiler
 This repo is for solving challenges from
-[http://rosettacode.org/wiki/Compiler].
+http://rosettacode.org/wiki/Compiler.
 
 ## Lexical analyzer
 
