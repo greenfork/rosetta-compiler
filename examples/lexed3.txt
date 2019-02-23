@@ -1,0 +1,16 @@
+    2      1 Keyword_print
+    2      6 LeftParen
+    2      7 Integer            42
+    2      9 RightParen
+    2     10 Semicolon
+    3      1 Keyword_print
+    3      6 LeftParen
+    3      7 String          "\nHello World\nGood Bye\nok\n"
+    3     38 RightParen
+    3     39 Semicolon
+    4      1 Keyword_print
+    4      6 LeftParen
+    4      7 String          "Print a slash n - \\n.\n"
+    4     33 RightParen
+    4     34 Semicolon
+    5      1 End_of_input

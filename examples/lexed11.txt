@@ -1,0 +1,74 @@
+    2      1 Identifier      i
+    2      3 Op_assign
+    2      5 Integer             1
+    2      6 Semicolon
+    3      1 Keyword_while
+    3      7 LeftParen
+    3      8 Identifier      i
+    3     10 Op_lessequal
+    3     13 Integer           100
+    3     16 RightParen
+    3     18 LeftBrace
+    4      5 Keyword_if
+    4      8 LeftParen
+    4      9 Op_not
+    4     10 LeftParen
+    4     11 Identifier      i
+    4     13 Op_mod
+    4     15 Integer            15
+    4     17 RightParen
+    4     18 RightParen
+    5      9 Keyword_print
+    5     14 LeftParen
+    5     15 String          "FizzBuzz"
+    5     25 RightParen
+    5     26 Semicolon
+    6      5 Keyword_else
+    6     10 Keyword_if
+    6     13 LeftParen
+    6     14 Op_not
+    6     15 LeftParen
+    6     16 Identifier      i
+    6     18 Op_mod
+    6     20 Integer             3
+    6     21 RightParen
+    6     22 RightParen
+    7      9 Keyword_print
+    7     14 LeftParen
+    7     15 String          "Fizz"
+    7     21 RightParen
+    7     22 Semicolon
+    8      5 Keyword_else
+    8     10 Keyword_if
+    8     13 LeftParen
+    8     14 Op_not
+    8     15 LeftParen
+    8     16 Identifier      i
+    8     18 Op_mod
+    8     20 Integer             5
+    8     21 RightParen
+    8     22 RightParen
+    9      9 Keyword_print
+    9     14 LeftParen
+    9     15 String          "Buzz"
+    9     21 RightParen
+    9     22 Semicolon
+   10      5 Keyword_else
+   11      9 Keyword_print
+   11     14 LeftParen
+   11     15 Identifier      i
+   11     16 RightParen
+   11     17 Semicolon
+   13      5 Keyword_print
+   13     10 LeftParen
+   13     11 String          "\n"
+   13     15 RightParen
+   13     16 Semicolon
+   14      5 Identifier      i
+   14      7 Op_assign
+   14      9 Identifier      i
+   14     11 Op_add
+   14     13 Integer             1
+   14     14 Semicolon
+   15      1 RightBrace
+   16      1 End_of_input

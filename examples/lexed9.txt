@@ -1,0 +1,38 @@
+    3      1 Identifier      n
+    3      3 Op_assign
+    3      5 Integer            12
+    3      7 Semicolon
+    4      1 Identifier      result
+    4      8 Op_assign
+    4     10 Integer             1
+    4     11 Semicolon
+    5      1 Identifier      i
+    5      3 Op_assign
+    5      5 Integer             1
+    5      6 Semicolon
+    6      1 Keyword_while
+    6      7 LeftParen
+    6      8 Identifier      i
+    6     10 Op_lessequal
+    6     13 Identifier      n
+    6     14 RightParen
+    6     16 LeftBrace
+    7      5 Identifier      result
+    7     12 Op_assign
+    7     14 Identifier      result
+    7     21 Op_multiply
+    7     23 Identifier      i
+    7     24 Semicolon
+    8      5 Identifier      i
+    8      7 Op_assign
+    8      9 Identifier      i
+    8     11 Op_add
+    8     13 Integer             1
+    8     14 Semicolon
+    9      1 RightBrace
+   10      1 Keyword_print
+   10      6 LeftParen
+   10      7 Identifier      result
+   10     13 RightParen
+   10     14 Semicolon
+   11      1 End_of_input

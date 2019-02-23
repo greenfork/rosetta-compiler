@@ -1,0 +1,32 @@
+    2      1 Identifier      i
+    2      3 Op_assign
+    2      5 Integer             1
+    2      6 Semicolon
+    3      1 Keyword_while
+    3      7 LeftParen
+    3      8 Identifier      i
+    3     10 Op_multiply
+    3     12 Identifier      i
+    3     14 Op_lessequal
+    3     17 Integer           100
+    3     20 RightParen
+    3     22 LeftBrace
+    4      5 Keyword_print
+    4     10 LeftParen
+    4     11 String          "door "
+    4     18 Comma
+    4     20 Identifier      i
+    4     22 Op_multiply
+    4     24 Identifier      i
+    4     25 Comma
+    4     27 String          " is open\n"
+    4     39 RightParen
+    4     40 Semicolon
+    5      5 Identifier      i
+    5      7 Op_assign
+    5      9 Identifier      i
+    5     11 Op_add
+    5     13 Integer             1
+    5     14 Semicolon
+    6      1 RightBrace
+    8      1 End_of_input

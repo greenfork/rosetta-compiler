@@ -1,0 +1,12 @@
+    4      1 Identifier     phoenix_number
+    4     16 Op_assign
+    4     18 Integer        142857
+    4     24 Semicolon
+    5      1 Keyword_print
+    5      6 LeftParen
+    5      7 Identifier     phoenix_number
+    5     21 Comma
+    5     23 String         "\n"
+    5     27 RightParen
+    5     28 Semicolon
+    6      1 End_of_input

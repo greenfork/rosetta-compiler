@@ -1,0 +1,45 @@
+    2      1 Identifier      bottles
+    2      9 Op_assign
+    2     11 Integer            99
+    2     13 Semicolon
+    3      1 Keyword_while
+    3      7 LeftParen
+    3      8 Identifier      bottles
+    3     16 Op_greater
+    3     18 Integer             0
+    3     19 RightParen
+    3     21 LeftBrace
+    4      5 Keyword_print
+    4     10 LeftParen
+    4     11 Identifier      bottles
+    4     18 Comma
+    4     20 String          " bottles of beer on the wall\n"
+    4     52 RightParen
+    4     53 Semicolon
+    5      5 Keyword_print
+    5     10 LeftParen
+    5     11 Identifier      bottles
+    5     18 Comma
+    5     20 String          " bottles of beer\n"
+    5     40 RightParen
+    5     41 Semicolon
+    6      5 Keyword_print
+    6     10 LeftParen
+    6     11 String          "Take one down, pass it around\n"
+    6     44 RightParen
+    6     45 Semicolon
+    7      5 Identifier      bottles
+    7     13 Op_assign
+    7     15 Identifier      bottles
+    7     23 Op_subtract
+    7     25 Integer             1
+    7     26 Semicolon
+    8      5 Keyword_print
+    8     10 LeftParen
+    8     11 Identifier      bottles
+    8     18 Comma
+    8     20 String          " bottles of beer on the wall\n\n"
+    8     54 RightParen
+    8     55 Semicolon
+    9      1 RightBrace
+   10      1 End_of_input

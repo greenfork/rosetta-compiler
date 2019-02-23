@@ -1,0 +1,36 @@
+    3      1 Identifier      a
+    3      3 Op_assign
+    3      5 Integer          1071
+    3      9 Semicolon
+    4      1 Identifier      b
+    4      3 Op_assign
+    4      5 Integer          1029
+    4      9 Semicolon
+    6      1 Keyword_while
+    6      7 LeftParen
+    6      8 Identifier      b
+    6     10 Op_notequal
+    6     13 Integer             0
+    6     14 RightParen
+    6     16 LeftBrace
+    7      5 Identifier      new_a
+    7     11 Op_assign
+    7     13 Identifier      b
+    7     14 Semicolon
+    8      5 Identifier      b
+    8     11 Op_assign
+    8     13 Identifier      a
+    8     15 Op_mod
+    8     17 Identifier      b
+    8     18 Semicolon
+    9      5 Identifier      a
+    9     11 Op_assign
+    9     13 Identifier      new_a
+    9     18 Semicolon
+   10      1 RightBrace
+   11      1 Keyword_print
+   11      6 LeftParen
+   11      7 Identifier      a
+   11      8 RightParen
+   11      9 Semicolon
+   12      1 End_of_input
