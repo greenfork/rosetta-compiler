@@ -120,10 +120,10 @@ proc lookAhead(ch1, ch2: char, tk1, tk2: TokenKind): (TokenKind, int) =
   if ch1 == ch2: return (tk1, 2)
   else: return (tk2, 1)
 
-proc getToken(text: string; tkl: var int): Token =
-  ## Return token and write its length to `tkl`.
-  ## If the token can not be defined, return `tkUnknown`
-  ## as a token and write 1 to its length.
+proc consumeToken(text: var string; tkl: var int): Token =
+  ## Return token removing it from the `text` and write its length to
+  ## `tkl`.  If the token can not be defined, return `tkUnknown` as a
+  ## token, shrink text by 1 and write 1 to its length.
 
   var
     matches: array[1, string]
@@ -168,6 +168,7 @@ proc getToken(text: string; tkl: var int): Token =
     val = matches[0]
   else: (tKind, tkl) = (tkUnknown, 1)
 
+  text = text[tkl..^1]
   return (tKind, val)
 
 proc tokenize*(text: string): seq[TokenAnn] =
@@ -180,10 +181,9 @@ proc tokenize*(text: string): seq[TokenAnn] =
 
   while text.len > 0:
     stripUnimportant(text, lineNo, colNo)
-    token = getToken(text, tokenLength)
+    token = consumeToken(text, tokenLength)
     result.add (token, lineNo, colNo)
     inc colNo, tokenLength
-    text = text[tokenLength..^1]
 
 proc output*(s: seq[TokenAnn]): string =
   var
