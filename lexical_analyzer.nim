@@ -70,7 +70,7 @@ proc findTokenKind(table: openArray[(char, TokenKind)]; needle: char):
                   TokenKind =
   for ch, tokenKind in items(table):
     if ch == needle: return tokenKind
-  return tkUnknown
+  tkUnknown
 
 proc stripComment(text: var string, lineNo, colNo: var int) =
   var matches: array[1, string]
@@ -99,8 +99,8 @@ proc stripUnimportant(text: var string; lineNo, colNo: var int) =
     else: return
 
 proc lookAhead(ch1, ch2: char, tk1, tk2: TokenKind): (TokenKind, int) =
-  if ch1 == ch2: return (tk1, 2)
-  else: return (tk2, 1)
+  if ch1 == ch2: (tk1, 2)
+  else: (tk2, 1)
 
 proc consumeToken(text: var string; tkl: var int): Token =
   ## Return token removing it from the `text` and write its length to
@@ -151,7 +151,7 @@ proc consumeToken(text: var string; tkl: var int): Token =
   else: (tKind, tkl) = (tkUnknown, 1)
 
   text = text[tkl..^1]
-  return Token(kind: tKind, value: val)
+  Token(kind: tKind, value: val)
 
 proc tokenize*(text: string): seq[TokenAnn] =
   result = newSeq[TokenAnn]()
