@@ -36,11 +36,11 @@ type
     tkStr = "String",
     tkEof = "End_of_input"
 
-  Token = tuple
+  Token = object
     kind: TokenKind
     value: string
 
-  TokenAnn = tuple
+  TokenAnn = object
     ## Annotated token with messages for compiler
     token: Token
     line, column: int
@@ -151,7 +151,7 @@ proc consumeToken(text: var string; tkl: var int): Token =
   else: (tKind, tkl) = (tkUnknown, 1)
 
   text = text[tkl..^1]
-  return (tKind, val)
+  return Token(kind: tKind, value: val)
 
 proc tokenize*(text: string): seq[TokenAnn] =
   result = newSeq[TokenAnn]()
@@ -164,16 +164,20 @@ proc tokenize*(text: string): seq[TokenAnn] =
   while text.len > 0:
     stripUnimportant(text, lineNo, colNo)
     token = consumeToken(text, tokenLength)
-    result.add (token, lineNo, colNo)
+    result.add TokenAnn(token: token, line: lineNo, column: colNo)
     inc colNo, tokenLength
 
 proc output*(s: seq[TokenAnn]): string =
   var
     tokenKind: TokenKind
     value: string
+    line, column: int
 
-  for token, line, column in items(s):
-    (tokenKind, value) = token
+  for tokenAnn in items(s):
+    line = tokenAnn.line
+    column = tokenAnn.column
+    tokenKind = tokenAnn.token.kind
+    value = tokenAnn.token.value
     result.add(
       fmt"{line:>5}{column:>7} {tokenKind:<15}{value}"
         .strip(leading = false) & "\n")
