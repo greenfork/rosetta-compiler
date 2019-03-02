@@ -185,7 +185,7 @@ proc output*(s: seq[TokenAnn]): string =
 when isMainModule:
   import os
 
-  var input = if paramCount() > 0: readFile paramStr(1)
+  let input = if paramCount() > 0: readFile paramStr(1)
               else: readAll stdin
 
   echo input.tokenize.output
