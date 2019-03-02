@@ -2,10 +2,39 @@ import re, strformat, strutils
 
 type
   TokenKind = enum
-    tkMul, tkDiv, tkMod, tkAdd, tkSub, tkNeg, tkLt, tkLte, tkGt, tkGte, tkEq,
-    tkNeq, tkNot, tkAsgn, tkAnd, tkOr, tkLpar, tkRpar, tkLbra, tkRbra, tkSmc,
-    tkCom, tkIf, tkElse, tkWhile, tkPrint, tkPutc, tkId, tkInt, tkChar, tkStr,
-    tkEof, tkUnknown
+    tkUnknown = "UNKNOWN_TOKEN",
+    tkMul = "Op_multiply",
+    tkDiv = "Op_divide",
+    tkMod = "Op_mod",
+    tkAdd = "Op_add",
+    tkSub = "Op_subtract",
+    tkNeg = "Op_negate",
+    tkLt = "Op_less",
+    tkLte = "Op_lessequal",
+    tkGt = "Op_greater",
+    tkGte = "Op_greaterequal",
+    tkEq = "Op_equal",
+    tkNeq = "Op_notequal",
+    tkNot = "Op_not",
+    tkAsgn = "Op_assign",
+    tkAnd = "Op_and",
+    tkOr = "Op_or",
+    tkLpar = "LeftParen",
+    tkRpar = "RightParen",
+    tkLbra = "LeftBrace",
+    tkRbra = "RightBrace",
+    tkSmc = "Semicolon",
+    tkCom = "Comma",
+    tkIf = "Keyword_if",
+    tkElse = "Keyword_else",
+    tkWhile = "Keyword_while",
+    tkPrint = "Keyword_print",
+    tkPutc = "Keyword_putc",
+    tkId = "Identifier",
+    tkInt = "Integer",
+    tkChar = "Integer",
+    tkStr = "String",
+    tkEof = "End_of_input"
 
   Token = tuple
     kind: TokenKind
@@ -15,43 +44,6 @@ type
     ## Annotated token with messages for compiler
     token: Token
     line, column: int
-
-const
-  tkNames = {
-    tkMul: "Op_multiply",
-    tkDiv: "Op_divide",
-    tkMod: "Op_mod",
-    tkAdd: "Op_add",
-    tkSub: "Op_subtract",
-    tkNeg: "Op_negate",
-    tkLt: "Op_less",
-    tkLte: "Op_lessequal",
-    tkGt: "Op_greater",
-    tkGte: "Op_greaterequal",
-    tkEq: "Op_equal",
-    tkNeq: "Op_notequal",
-    tkNot: "Op_not",
-    tkAsgn: "Op_assign",
-    tkAnd: "Op_and",
-    tkOr: "Op_or",
-    tkLpar: "LeftParen",
-    tkRpar: "RightParen",
-    tkLbra: "LeftBrace",
-    tkRbra: "RightBrace",
-    tkSmc: "Semicolon",
-    tkCom: "Comma",
-    tkIf: "Keyword_if",
-    tkElse: "Keyword_else",
-    tkWhile: "Keyword_while",
-    tkPrint: "Keyword_print",
-    tkPutc: "Keyword_putc",
-    tkId: "Identifier",
-    tkInt: "Integer",
-    tkChar: "Integer",
-    tkStr: "String",
-    tkEof: "End_of_input",
-    tkUnknown: "UNKNOWN_TOKEN",
-  }
 
 proc getSymbols(table: openArray[(char, TokenKind)]): seq[char] =
   result = newSeq[char]()
@@ -73,16 +65,6 @@ const
     '/': tkDiv, # the comment case /* ... */ is handled in `stripUnimportant`
   }
   symbols = getSymbols(tkSymbols)
-
-static:
-  for tokenKind in low(TokenKind)..high(TokenKind):
-    try: assert tkNames[ord(tokenKind)][0] == tokenKind
-    except: raise newException(Exception, fmt(
-      "Out of order token kind in tkNames table: " &
-        "Expected {tokenKind} but got {tkNames[ord(tokenKind)][0]}"))
-
-proc findTokenName(token: TokenKind): string =
-  tkNames[token.ord][1]
 
 proc findTokenKind(table: openArray[(char, TokenKind)]; needle: char):
                   TokenKind =
@@ -193,7 +175,7 @@ proc output*(s: seq[TokenAnn]): string =
   for token, line, column in items(s):
     (tokenKind, value) = token
     result.add(
-      fmt"{line:>5}{column:>7} {tokenKind.findTokenName:<15}{value}"
+      fmt"{line:>5}{column:>7} {tokenKind:<15}{value}"
         .strip(leading = false) & "\n")
 
 when isMainModule:
