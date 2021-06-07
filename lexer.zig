@@ -87,6 +87,26 @@ pub const Token = struct {
     col: usize,
     typ: TokenType = .unknown,
     value: ?TokenValue = null,
+
+    fn build(lexer: Lexer, typ: TokenType, value: ?TokenValue) Token {
+        return Token{
+            .line = lexer.line,
+            .col = lexer.col,
+            .typ = typ,
+            .value = value,
+        };
+    }
+};
+
+pub const LexerError = error{
+    EmptyCharacterConstant,
+    UnknownEscapeSequence,
+    MulticharacterConstant,
+    EndOfFileInComment,
+    EndOfFileInString,
+    EnfOfLineInString,
+    UnrecognizedCharacter,
+    InvalidNumber,
 };
 
 pub const Lexer = struct {
@@ -94,6 +114,9 @@ pub const Lexer = struct {
     line: usize,
     col: usize,
     offset: usize,
+    start: bool = true,
+
+    const Self = @This();
 
     pub fn init(content: []const u8) Lexer {
         return Lexer{
@@ -103,11 +126,45 @@ pub const Lexer = struct {
             .offset = 0,
         };
     }
+
+    pub fn curr(self: Self) u8 {
+        return self.content[self.offset];
+    }
+
+    pub fn next(self: *Self) LexerError!?u8 {
+        if (self.start) {
+            self.start = false;
+        } else {
+            self.offset += 1;
+            if (self.offset >= self.content.len) return null;
+            if (self.curr() == '\n') {
+                self.col = 1;
+                while (self.curr() == '\n') {
+                    self.line += 1;
+                    self.offset += 1;
+                    if (self.offset >= self.content.len) return null;
+                }
+            } else {
+                self.col += 1;
+            }
+        }
+        return self.curr();
+    }
 };
 
-pub fn lex(allocator: *std.mem.Allocator, content: []u8) !TokenList {
-    var tokens = TokenList.init(allocator);
+pub fn lex(allocator: *std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
+    var tokens = std.ArrayList(Token).init(allocator);
     var lexer = Lexer.init(content);
+    while (try lexer.next()) |ch| {
+        switch (ch) {
+            '/' => try tokens.append(Token.build(
+                lexer,
+                TokenType.string,
+                TokenValue{ .string = content[0..2] },
+            )),
+            else => {},
+        }
+    }
     return tokens;
 }
 
@@ -134,9 +191,7 @@ fn printContent(content: []u8) void {
     p("\n==================== File end =======================\n", .{});
 }
 
-pub const TokenList = std.ArrayList(Token);
-
-fn tokenListToString(allocator: *std.mem.Allocator, token_list: TokenList) ![]u8 {
+fn tokenListToString(allocator: *std.mem.Allocator, token_list: std.ArrayList(Token)) ![]u8 {
     var result = std.ArrayList(u8).init(allocator);
     var w = result.writer();
     for (token_list.items) |token| {
@@ -145,8 +200,10 @@ fn tokenListToString(allocator: *std.mem.Allocator, token_list: TokenList) ![]u8
         _ = try w.write(try fmt.allocPrint(allocator, " {s:<15}", .{token.typ.toString()}));
         if (token.value) |value| {
             switch (value) {
-                .string => |s| _ = try w.write(try fmt.allocPrint(allocator, "\"{s}\"", .{s})),
-                else => {},
+                .string => |str| _ = try w.write(try fmt.allocPrint(allocator, "\"{s}\"", .{str})),
+                .ident => |ident| _ = try w.write(try fmt.allocPrint(allocator, "{s}", .{ident})),
+                .intlit => |i| _ = try w.write(try fmt.allocPrint(allocator, "{d}", .{i})),
+                .intchar => |ch| _ = try w.write(try fmt.allocPrint(allocator, "{c}", .{ch})),
             }
         }
         _ = try w.write("\n");
@@ -159,7 +216,7 @@ test "tokenListToString" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     var allocator = &arena.allocator;
-    var tokens = TokenList.init(allocator);
+    var tokens = std.ArrayList(Token).init(allocator);
     const str: []const u8 = "Hello, World!\\n";
     const tok_array = [6]Token{
         Token{ .line = 4, .col = 1, .typ = .kw_print },
@@ -169,7 +226,7 @@ test "tokenListToString" {
         Token{ .line = 4, .col = 25, .typ = .semicolon },
         Token{ .line = 5, .col = 1, .typ = .eof },
     };
-    var token_list = TokenList.init(allocator);
+    var token_list = std.ArrayList(Token).init(allocator);
     (try token_list.addManyAsArray(6)).* = tok_array;
     const expected =
         \\    4      1 Keyword_print  
