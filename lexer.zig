@@ -127,11 +127,18 @@ pub const Lexer = struct {
         };
     }
 
+    fn print(self: Self) void {
+        std.debug.print(
+            "Lexer: line({d}), column({d}), offset({d})\n",
+            .{ self.line, self.col, self.offset },
+        );
+    }
+
     pub fn curr(self: Self) u8 {
         return self.content[self.offset];
     }
 
-    pub fn next(self: *Self) LexerError!?u8 {
+    pub fn next(self: *Self) ?u8 {
         if (self.start) {
             self.start = false;
         } else {
@@ -150,21 +157,76 @@ pub const Lexer = struct {
         }
         return self.curr();
     }
+
+    pub fn peek(self: Self) ?u8 {
+        var self_copy = self;
+        return (&self_copy).next();
+    }
+
+    fn div_or_comment(self: *Self) LexerError!?Token {
+        if (self.peek()) |peek_ch| {
+            if (peek_ch == '*') {
+                _ = self.next(); // peeked character
+                while (self.next()) |ch| {
+                    if (ch == '*') {
+                        if (self.peek()) |next_ch| {
+                            if (next_ch == '/') {
+                                _ = self.next(); // peeked character
+                                return null;
+                            }
+                        }
+                    }
+                }
+                return LexerError.EndOfFileInComment;
+            }
+        }
+        return Token.build(self.*, .divide, null);
+    }
+
+    fn identifier_or_keyword(self: *Self, allocator: *std.mem.Allocator) !Token {
+        var result = Token.build(self.*, .identifier, null);
+        var value = std.ArrayList(u8).init(allocator);
+        try value.append(self.curr());
+        while (self.peek()) |ch| : (_ = self.next()) {
+            switch (ch) {
+                '_', 'a'...'z', 'A'...'Z', '0'...'9' => try value.append(ch),
+                else => break,
+            }
+        }
+
+        if (std.mem.eql(u8, value.items, "if")) {
+            result.typ = .kw_if;
+        } else if (std.mem.eql(u8, value.items, "else")) {
+            result.typ = .kw_else;
+        } else if (std.mem.eql(u8, value.items, "while")) {
+            result.typ = .kw_while;
+        } else if (std.mem.eql(u8, value.items, "print")) {
+            result.typ = .kw_print;
+        } else if (std.mem.eql(u8, value.items, "putc")) {
+            result.typ = .kw_putc;
+        } else {
+            result.value = TokenValue{ .ident = value.items };
+        }
+
+        return result;
+    }
 };
 
 pub fn lex(allocator: *std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
     var tokens = std.ArrayList(Token).init(allocator);
     var lexer = Lexer.init(content);
-    while (try lexer.next()) |ch| {
+    while (lexer.next()) |ch| {
         switch (ch) {
-            '/' => try tokens.append(Token.build(
-                lexer,
-                TokenType.string,
-                TokenValue{ .string = content[0..2] },
-            )),
+            '/' => {
+                if (try lexer.div_or_comment()) |token| try tokens.append(token);
+            },
+            '_', 'a'...'z', 'A'...'Z' => {
+                try tokens.append(try lexer.identifier_or_keyword(allocator));
+            },
             else => {},
         }
     }
+    lexer.print();
     return tokens;
 }
 
@@ -196,7 +258,7 @@ fn tokenListToString(allocator: *std.mem.Allocator, token_list: std.ArrayList(To
     var w = result.writer();
     for (token_list.items) |token| {
         _ = try w.write(try fmt.allocPrint(allocator, "{d:>5}", .{token.line}));
-        _ = try w.write(try fmt.allocPrint(allocator, "{d:>7}", .{token.col}));
+        _ = try w.write(try fmt.allocPrint(allocator, "{d:>5}", .{token.col}));
         _ = try w.write(try fmt.allocPrint(allocator, " {s:<15}", .{token.typ.toString()}));
         if (token.value) |value| {
             switch (value) {
@@ -208,7 +270,7 @@ fn tokenListToString(allocator: *std.mem.Allocator, token_list: std.ArrayList(To
         }
         _ = try w.write("\n");
     }
-    _ = result.pop(); // final newline
+    if (result.items.len > 0) _ = result.pop(); // final newline
     return result.items;
 }
 
@@ -229,14 +291,34 @@ test "tokenListToString" {
     var token_list = std.ArrayList(Token).init(allocator);
     (try token_list.addManyAsArray(6)).* = tok_array;
     const expected =
-        \\    4      1 Keyword_print  
-        \\    4      6 LeftParen      
-        \\    4      7 String         "Hello, World!\n"
-        \\    4     24 RightParen     
-        \\    4     25 Semicolon      
-        \\    5      1 End_of_input   
+        \\    4    1 Keyword_print  
+        \\    4    6 LeftParen      
+        \\    4    7 String         "Hello, World!\n"
+        \\    4   24 RightParen     
+        \\    4   25 Semicolon      
+        \\    5    1 End_of_input   
     ;
     const result = try tokenListToString(allocator, token_list);
 
     try testing.expectFmt(expected, "{s}", .{result});
+}
+
+test "lexer" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var allocator = &arena.allocator;
+    const test_str =
+        \\abc
+        \\de
+    ;
+    var lexer = Lexer.init(test_str);
+    try testing.expectEqual(@as(u8, 'a'), lexer.next().?);
+    try testing.expectEqual(@as(u8, 'b'), lexer.next().?);
+    try testing.expectEqual(@as(u8, 'b'), lexer.curr());
+    try testing.expectEqual(@as(u8, 'c'), lexer.peek().?);
+    try testing.expectEqual(@as(u8, 'c'), lexer.next().?);
+    try testing.expectEqual(@as(u8, 'd'), lexer.peek().?);
+    try testing.expectEqual(@as(u8, 'd'), lexer.next().?);
+    try testing.expectEqual(@as(u8, 'e'), lexer.next().?);
+    try testing.expect(null == lexer.next());
 }
