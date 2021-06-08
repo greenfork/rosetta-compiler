@@ -569,4 +569,232 @@ test "examples" {
         const stripped_result = try squishSpaces(allocator, pretty_output);
         try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
     }
+
+    {
+        const example_input_path = "examples/input3.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/lexed3.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const tokens = try lex(allocator, content_input);
+        const pretty_output = try tokenListToString(allocator, tokens);
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/input4.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/lexed4.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const tokens = try lex(allocator, content_input);
+        const pretty_output = try tokenListToString(allocator, tokens);
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/input5.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/lexed5.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const tokens = try lex(allocator, content_input);
+        const pretty_output = try tokenListToString(allocator, tokens);
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/input6.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/lexed6.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const tokens = try lex(allocator, content_input);
+        const pretty_output = try tokenListToString(allocator, tokens);
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/input7.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/lexed7.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const tokens = try lex(allocator, content_input);
+        const pretty_output = try tokenListToString(allocator, tokens);
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/input8.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/lexed8.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const tokens = try lex(allocator, content_input);
+        const pretty_output = try tokenListToString(allocator, tokens);
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/input9.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/lexed9.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const tokens = try lex(allocator, content_input);
+        const pretty_output = try tokenListToString(allocator, tokens);
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/input10.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/lexed10.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const tokens = try lex(allocator, content_input);
+        const pretty_output = try tokenListToString(allocator, tokens);
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/input11.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/lexed11.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const tokens = try lex(allocator, content_input);
+        const pretty_output = try tokenListToString(allocator, tokens);
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/input12.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/lexed12.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const tokens = try lex(allocator, content_input);
+        const pretty_output = try tokenListToString(allocator, tokens);
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/input13.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/lexed13.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const tokens = try lex(allocator, content_input);
+        const pretty_output = try tokenListToString(allocator, tokens);
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/input14.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/lexed14.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const tokens = try lex(allocator, content_input);
+        const pretty_output = try tokenListToString(allocator, tokens);
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
 }
