@@ -138,10 +138,7 @@ pub const Lexer = struct {
             self.start = false;
         } else {
             const newline = self.curr() == '\n';
-
             self.offset += 1;
-            if (self.offset >= self.content.len) return null;
-
             if (newline) {
                 self.col = 1;
                 self.line += 1;
@@ -149,7 +146,11 @@ pub const Lexer = struct {
                 self.col += 1;
             }
         }
-        return self.curr();
+        if (self.offset >= self.content.len) {
+            return null;
+        } else {
+            return self.curr();
+        }
     }
 
     pub fn peek(self: Self) ?u8 {
@@ -235,6 +236,10 @@ pub fn lex(allocator: *std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
             else => {},
         }
     }
+    var eof_token = lexer.buildToken();
+    eof_token.typ = .eof;
+    try tokens.append(eof_token);
+
     lexer.print();
     return tokens;
 }
