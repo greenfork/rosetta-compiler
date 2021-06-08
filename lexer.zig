@@ -129,6 +129,10 @@ pub const Lexer = struct {
         return Token{ .line = self.line, .col = self.col };
     }
 
+    pub fn buildTokenT(self: Self, typ: TokenType) Token {
+        return Token{ .line = self.line, .col = self.col, .typ = typ };
+    }
+
     pub fn curr(self: Self) u8 {
         return self.content[self.offset];
     }
@@ -223,7 +227,7 @@ pub const Lexer = struct {
                 '\\' => {
                     if (self.peek()) |escaped_ch| {
                         switch (escaped_ch) {
-                            'n', '\\' => _ = self.next(),
+                            'n', '\\' => _ = self.next(), // peeked character
                             else => return LexerError.UnknownEscapeSequence,
                         }
                     } else {
@@ -239,6 +243,34 @@ pub const Lexer = struct {
         result.value = TokenValue{ .string = self.content[init_offset..final_offset] };
         return result;
     }
+
+    fn followed(self: *Self, by: u8, ifyes: TokenType, ifno: TokenType) Token {
+        var result = self.buildToken();
+        if (self.peek()) |ch| {
+            if (ch == by) {
+                _ = self.next(); // peeked character
+                result.typ = ifyes;
+            } else {
+                result.typ = ifno;
+            }
+        } else {
+            result.typ = ifno;
+        }
+        return result;
+    }
+
+    fn consecutive(self: *Self, by: u8, typ: TokenType) LexerError!Token {
+        if (self.peek()) |ch| {
+            if (ch == by) {
+                _ = self.next(); // peeked character
+                return self.buildTokenT(typ);
+            } else {
+                return LexerError.UnrecognizedCharacter;
+            }
+        } else {
+            return LexerError.UnrecognizedCharacter;
+        }
+    }
 };
 
 pub fn lex(allocator: *std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
@@ -246,6 +278,22 @@ pub fn lex(allocator: *std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
     var lexer = Lexer.init(content);
     while (lexer.next()) |ch| {
         switch (ch) {
+            '*' => try tokens.append(lexer.buildTokenT(.multiply)),
+            '%' => try tokens.append(lexer.buildTokenT(.mod)),
+            '+' => try tokens.append(lexer.buildTokenT(.add)),
+            '-' => try tokens.append(lexer.buildTokenT(.subtract)),
+            '<' => try tokens.append(lexer.followed('=', .less_equal, .less)),
+            '>' => try tokens.append(lexer.followed('=', .greater_equal, .greater)),
+            '=' => try tokens.append(lexer.followed('=', .equal, .assign)),
+            '!' => try tokens.append(lexer.followed('=', .not_equal, .not)),
+            '(' => try tokens.append(lexer.buildTokenT(.left_paren)),
+            ')' => try tokens.append(lexer.buildTokenT(.right_paren)),
+            '{' => try tokens.append(lexer.buildTokenT(.left_brace)),
+            '}' => try tokens.append(lexer.buildTokenT(.right_brace)),
+            ';' => try tokens.append(lexer.buildTokenT(.semicolon)),
+            ',' => try tokens.append(lexer.buildTokenT(.comma)),
+            '&' => try tokens.append(try lexer.consecutive('&', .bool_and)),
+            '|' => try tokens.append(try lexer.consecutive('|', .bool_and)),
             '/' => {
                 if (try lexer.divOrComment()) |token| try tokens.append(token);
             },
@@ -258,9 +306,7 @@ pub fn lex(allocator: *std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
             else => {},
         }
     }
-    var eof_token = lexer.buildToken();
-    eof_token.typ = .eof;
-    try tokens.append(eof_token);
+    try tokens.append(lexer.buildTokenT(.eof));
 
     lexer.print();
     return tokens;
