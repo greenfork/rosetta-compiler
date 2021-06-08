@@ -144,13 +144,10 @@ pub const Lexer = struct {
         } else {
             self.offset += 1;
             if (self.offset >= self.content.len) return null;
+
             if (self.curr() == '\n') {
                 self.col = 1;
-                while (self.curr() == '\n') {
-                    self.line += 1;
-                    self.offset += 1;
-                    if (self.offset >= self.content.len) return null;
-                }
+                self.line += 1;
             } else {
                 self.col += 1;
             }
@@ -159,8 +156,11 @@ pub const Lexer = struct {
     }
 
     pub fn peek(self: Self) ?u8 {
-        var self_copy = self;
-        return (&self_copy).next();
+        if (self.offset + 1 >= self.content.len) {
+            return null;
+        } else {
+            return self.content[self.offset + 1];
+        }
     }
 
     fn divOrComment(self: *Self) LexerError!?Token {
@@ -333,7 +333,8 @@ test "lexer" {
     try testing.expectEqual(@as(u8, 'b'), lexer.curr());
     try testing.expectEqual(@as(u8, 'c'), lexer.peek().?);
     try testing.expectEqual(@as(u8, 'c'), lexer.next().?);
-    try testing.expectEqual(@as(u8, 'd'), lexer.peek().?);
+    try testing.expectEqual(@as(u8, '\n'), lexer.peek().?);
+    try testing.expectEqual(@as(u8, '\n'), lexer.next().?);
     try testing.expectEqual(@as(u8, 'd'), lexer.next().?);
     try testing.expectEqual(@as(u8, 'e'), lexer.next().?);
     try testing.expect(null == lexer.next());
