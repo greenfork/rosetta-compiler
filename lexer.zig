@@ -325,7 +325,6 @@ pub fn lex(allocator: *std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
     }
     try tokens.append(lexer.buildTokenT(.eof));
 
-    lexer.print();
     return tokens;
 }
 
@@ -363,7 +362,7 @@ fn tokenListToString(allocator: *std.mem.Allocator, token_list: std.ArrayList(To
     for (token_list.items) |token| {
         const common_args = .{ token.line, token.col, token.typ.toString() };
         if (token.value) |value| {
-            const init_fmt = "{d:>5}{d:>5} {s:<15}";
+            const init_fmt = "{d:>5}{d:>7} {s:<15}";
             switch (value) {
                 .string => |str| _ = try w.write(try fmt.allocPrint(
                     allocator,
@@ -387,10 +386,9 @@ fn tokenListToString(allocator: *std.mem.Allocator, token_list: std.ArrayList(To
                 )),
             }
         } else {
-            _ = try w.write(try fmt.allocPrint(allocator, "{d:>5}{d:>5} {s}\n", common_args));
+            _ = try w.write(try fmt.allocPrint(allocator, "{d:>5}{d:>7} {s}\n", common_args));
         }
     }
-    if (result.items.len > 0) _ = result.pop(); // final newline
     return result.items;
 }
 
@@ -411,12 +409,13 @@ test "tokenListToString" {
     var token_list = std.ArrayList(Token).init(allocator);
     (try token_list.addManyAsArray(6)).* = tok_array;
     const expected =
-        \\    4    1 Keyword_print
-        \\    4    6 LeftParen
-        \\    4    7 String         "Hello, World!\n"
-        \\    4   24 RightParen
-        \\    4   25 Semicolon
-        \\    5    1 End_of_input
+        \\    4      1 Keyword_print
+        \\    4      6 LeftParen
+        \\    4      7 String         "Hello, World!\n"
+        \\    4     24 RightParen
+        \\    4     25 Semicolon
+        \\    5      1 End_of_input
+        \\
     ;
     const result = try tokenListToString(allocator, token_list);
 
@@ -442,4 +441,44 @@ test "lexer" {
     try testing.expectEqual(@as(u8, 'd'), lexer.next().?);
     try testing.expectEqual(@as(u8, 'e'), lexer.next().?);
     try testing.expect(null == lexer.next());
+}
+
+test "examples" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var allocator = &arena.allocator;
+
+    {
+        const example_input_path = "examples/input0.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/lexed0.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const tokens = try lex(allocator, content_input);
+        const pretty_output = try tokenListToString(allocator, tokens);
+
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
+    }
+
+    {
+        const example_input_path = "examples/input1.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/lexed1.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const tokens = try lex(allocator, content_input);
+        const pretty_output = try tokenListToString(allocator, tokens);
+
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
+    }
 }
