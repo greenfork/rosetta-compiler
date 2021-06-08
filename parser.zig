@@ -1,4 +1,5 @@
 const std = @import("std");
+const testing = std.testing;
 const p = std.debug.print;
 
 pub const TokenType = enum {
@@ -120,6 +121,48 @@ pub const Token = struct {
     value: ?TokenValue = null,
 };
 
+pub const NodeType = enum {
+    unknown,
+    identifier,
+    string,
+    integer,
+    sequence,
+    kw_if,
+    prtc,
+    prts,
+    prti,
+    kw_while,
+    assign,
+    negate,
+    not,
+    multiply,
+    divide,
+    mod,
+    add,
+    subtract,
+    less,
+    less_equal,
+    greater,
+    greater_equal,
+    equal,
+    not_equal,
+    bool_and,
+    bool_or,
+};
+
+pub const NodeValue = union(enum) {
+    identifier: []const u8,
+    integer: i64,
+    string: []const u8,
+};
+
+pub const Node = struct {
+    left: ?Node,
+    right: ?Node,
+    typ: NodeType,
+    value: ?NodeValue,
+};
+
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -139,7 +182,7 @@ pub fn main() !void {
     defer file_handle.close();
     const input_content = try file_handle.readToEndAlloc(allocator, std.math.maxInt(usize));
 
-    const tokens = try inputToTokenList(allocator, input_content);
+    const tokens = try stringToTokenList(allocator, input_content);
 
     printContent(input_content, "Result");
 }
@@ -150,9 +193,9 @@ fn printContent(content: []u8, title: []const u8) void {
     p("\n==================== File end =======================\n", .{});
 }
 
-fn inputToTokenList(allocator: *std.mem.Allocator, input: []const u8) !std.ArrayList(Token) {
+fn stringToTokenList(allocator: *std.mem.Allocator, str: []const u8) !std.ArrayList(Token) {
     var result = std.ArrayList(Token).init(allocator);
-    var lines = std.mem.split(input, "\n");
+    var lines = std.mem.split(str, "\n");
     while (lines.next()) |line| {
         if (line.len == 0) break;
         var tokens_it = std.mem.tokenize(line, " ");
@@ -180,4 +223,45 @@ fn inputToTokenList(allocator: *std.mem.Allocator, input: []const u8) !std.Array
         try result.append(token);
     }
     return result;
+}
+
+test "stringToTokenList" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var allocator = &arena.allocator;
+    var tokens = std.ArrayList(Token).init(allocator);
+    const str: []const u8 = "\"Hello, World!\\n\"";
+    const tok_array = [6]Token{
+        Token{ .line = 4, .col = 1, .typ = .kw_print },
+        Token{ .line = 4, .col = 6, .typ = .left_paren },
+        Token{ .line = 4, .col = 7, .typ = .string, .value = TokenValue{ .string = str } },
+        Token{ .line = 4, .col = 24, .typ = .right_paren },
+        Token{ .line = 4, .col = 25, .typ = .semicolon },
+        Token{ .line = 5, .col = 1, .typ = .eof },
+    };
+    var token_list = std.ArrayList(Token).init(allocator);
+    (try token_list.addManyAsArray(6)).* = tok_array;
+    const string =
+        \\    4      1 Keyword_print
+        \\    4      6 LeftParen
+        \\    4      7 String         "Hello, World!\n"
+        \\    4     24 RightParen
+        \\    4     25 Semicolon
+        \\    5      1 End_of_input
+        \\
+    ;
+    const result = try stringToTokenList(allocator, string);
+
+    try testing.expectEqual(token_list.items.len, result.items.len);
+    try testing.expectEqual(token_list.items[0], result.items[0]);
+    try testing.expectEqual(token_list.items[1], result.items[1]);
+
+    try testing.expectEqual(token_list.items[2].line, result.items[2].line);
+    try testing.expectEqual(token_list.items[2].col, result.items[2].col);
+    try testing.expectEqual(token_list.items[2].typ, result.items[2].typ);
+    try testing.expectEqualSlices(u8, token_list.items[2].value.?.string, result.items[2].value.?.string);
+
+    try testing.expectEqual(token_list.items[3], result.items[3]);
+    try testing.expectEqual(token_list.items[4], result.items[4]);
+    try testing.expectEqual(token_list.items[5], result.items[5]);
 }
