@@ -137,10 +137,12 @@ pub const Lexer = struct {
         if (self.start) {
             self.start = false;
         } else {
+            const newline = self.curr() == '\n';
+
             self.offset += 1;
             if (self.offset >= self.content.len) return null;
 
-            if (self.curr() == '\n') {
+            if (newline) {
                 self.col = 1;
                 self.line += 1;
             } else {
