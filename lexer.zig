@@ -163,7 +163,7 @@ pub const Lexer = struct {
         return (&self_copy).next();
     }
 
-    fn div_or_comment(self: *Self) LexerError!?Token {
+    fn divOrComment(self: *Self) LexerError!?Token {
         if (self.peek()) |peek_ch| {
             if (peek_ch == '*') {
                 _ = self.next(); // peeked character
@@ -183,29 +183,29 @@ pub const Lexer = struct {
         return Token.build(self.*, .divide, null);
     }
 
-    fn identifier_or_keyword(self: *Self, allocator: *std.mem.Allocator) !Token {
+    fn identifierOrKeyword(self: *Self, allocator: *std.mem.Allocator) !Token {
         var result = Token.build(self.*, .identifier, null);
-        var value = std.ArrayList(u8).init(allocator);
-        try value.append(self.curr());
+        var init_offset = self.offset;
+        var final_offset = self.offset + 1;
         while (self.peek()) |ch| : (_ = self.next()) {
             switch (ch) {
-                '_', 'a'...'z', 'A'...'Z', '0'...'9' => try value.append(ch),
+                '_', 'a'...'z', 'A'...'Z', '0'...'9' => final_offset += 1,
                 else => break,
             }
         }
 
-        if (std.mem.eql(u8, value.items, "if")) {
+        if (std.mem.eql(u8, self.content[init_offset..final_offset], "if")) {
             result.typ = .kw_if;
-        } else if (std.mem.eql(u8, value.items, "else")) {
+        } else if (std.mem.eql(u8, self.content[init_offset..final_offset], "else")) {
             result.typ = .kw_else;
-        } else if (std.mem.eql(u8, value.items, "while")) {
+        } else if (std.mem.eql(u8, self.content[init_offset..final_offset], "while")) {
             result.typ = .kw_while;
-        } else if (std.mem.eql(u8, value.items, "print")) {
+        } else if (std.mem.eql(u8, self.content[init_offset..final_offset], "print")) {
             result.typ = .kw_print;
-        } else if (std.mem.eql(u8, value.items, "putc")) {
+        } else if (std.mem.eql(u8, self.content[init_offset..final_offset], "putc")) {
             result.typ = .kw_putc;
         } else {
-            result.value = TokenValue{ .ident = value.items };
+            result.value = TokenValue{ .ident = self.content[init_offset..final_offset] };
         }
 
         return result;
@@ -218,10 +218,10 @@ pub fn lex(allocator: *std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
     while (lexer.next()) |ch| {
         switch (ch) {
             '/' => {
-                if (try lexer.div_or_comment()) |token| try tokens.append(token);
+                if (try lexer.divOrComment()) |token| try tokens.append(token);
             },
             '_', 'a'...'z', 'A'...'Z' => {
-                try tokens.append(try lexer.identifier_or_keyword(allocator));
+                try tokens.append(try lexer.identifierOrKeyword(allocator));
             },
             else => {},
         }
