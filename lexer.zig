@@ -225,13 +225,9 @@ pub const Lexer = struct {
                 '"' => break,
                 '\n' => return LexerError.EndOfLineInString,
                 '\\' => {
-                    if (self.peek()) |escaped_ch| {
-                        switch (escaped_ch) {
-                            'n', '\\' => _ = self.next(), // peeked character
-                            else => return LexerError.UnknownEscapeSequence,
-                        }
-                    } else {
-                        return LexerError.EndOfFileInString;
+                    switch (self.peek() orelse return LexerError.EndOfFileInString) {
+                        'n', '\\' => _ = self.next(), // peeked character
+                        else => return LexerError.UnknownEscapeSequence,
                     }
                 },
                 else => {},
