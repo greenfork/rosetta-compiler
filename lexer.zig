@@ -87,15 +87,6 @@ pub const Token = struct {
     col: usize,
     typ: TokenType = .unknown,
     value: ?TokenValue = null,
-
-    fn build(lexer: Lexer, typ: TokenType, value: ?TokenValue) Token {
-        return Token{
-            .line = lexer.line,
-            .col = lexer.col,
-            .typ = typ,
-            .value = value,
-        };
-    }
 };
 
 pub const LexerError = error{
@@ -134,6 +125,10 @@ pub const Lexer = struct {
         );
     }
 
+    pub fn buildToken(self: Self) Token {
+        return Token{ .line = self.line, .col = self.col };
+    }
+
     pub fn curr(self: Self) u8 {
         return self.content[self.offset];
     }
@@ -164,6 +159,7 @@ pub const Lexer = struct {
     }
 
     fn divOrComment(self: *Self) LexerError!?Token {
+        var result = self.buildToken();
         if (self.peek()) |peek_ch| {
             if (peek_ch == '*') {
                 _ = self.next(); // peeked character
@@ -180,11 +176,12 @@ pub const Lexer = struct {
                 return LexerError.EndOfFileInComment;
             }
         }
-        return Token.build(self.*, .divide, null);
+        result.typ = .divide;
+        return result;
     }
 
     fn identifierOrKeyword(self: *Self, allocator: *std.mem.Allocator) !Token {
-        var result = Token.build(self.*, .identifier, null);
+        var result = self.buildToken();
         var init_offset = self.offset;
         var final_offset = self.offset + 1;
         while (self.peek()) |ch| : (_ = self.next()) {
@@ -205,6 +202,7 @@ pub const Lexer = struct {
         } else if (std.mem.eql(u8, self.content[init_offset..final_offset], "putc")) {
             result.typ = .kw_putc;
         } else {
+            result.typ = .identifier;
             result.value = TokenValue{ .ident = self.content[init_offset..final_offset] };
         }
 
@@ -212,7 +210,8 @@ pub const Lexer = struct {
     }
 
     fn string(self: *Self, allocator: *std.mem.Allocator) !Token {
-        var result = Token.build(self.*, .identifier, null);
+        var result = self.buildToken();
+        result.typ = .string;
         return result;
     }
 };
