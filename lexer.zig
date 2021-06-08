@@ -95,7 +95,7 @@ pub const LexerError = error{
     MulticharacterConstant,
     EndOfFileInComment,
     EndOfFileInString,
-    EnfOfLineInString,
+    EndOfLineInString,
     UnrecognizedCharacter,
     InvalidNumber,
 };
@@ -185,14 +185,14 @@ pub const Lexer = struct {
 
     fn identifierOrKeyword(self: *Self, allocator: *std.mem.Allocator) !Token {
         var result = self.buildToken();
-        var init_offset = self.offset;
-        var final_offset = self.offset + 1;
+        const init_offset = self.offset;
         while (self.peek()) |ch| : (_ = self.next()) {
             switch (ch) {
-                '_', 'a'...'z', 'A'...'Z', '0'...'9' => final_offset += 1,
+                '_', 'a'...'z', 'A'...'Z', '0'...'9' => {},
                 else => break,
             }
         }
+        const final_offset = self.offset + 1;
 
         if (std.mem.eql(u8, self.content[init_offset..final_offset], "if")) {
             result.typ = .kw_if;
@@ -215,6 +215,28 @@ pub const Lexer = struct {
     fn string(self: *Self, allocator: *std.mem.Allocator) !Token {
         var result = self.buildToken();
         result.typ = .string;
+        const init_offset = self.offset;
+        while (self.next()) |ch| {
+            switch (ch) {
+                '"' => break,
+                '\n' => return LexerError.EndOfLineInString,
+                '\\' => {
+                    if (self.peek()) |escaped_ch| {
+                        switch (escaped_ch) {
+                            'n', '\\' => _ = self.next(),
+                            else => return LexerError.UnknownEscapeSequence,
+                        }
+                    } else {
+                        return LexerError.EndOfFileInString;
+                    }
+                },
+                else => {},
+            }
+        } else {
+            return LexerError.EndOfFileInString;
+        }
+        const final_offset = self.offset + 1;
+        result.value = TokenValue{ .string = self.content[init_offset..final_offset] };
         return result;
     }
 };
@@ -277,7 +299,7 @@ fn tokenListToString(allocator: *std.mem.Allocator, token_list: std.ArrayList(To
             switch (value) {
                 .string => |str| _ = try w.write(try fmt.allocPrint(
                     allocator,
-                    init_fmt ++ "\"{s}\"\n",
+                    init_fmt ++ "{s}\n",
                     common_args ++ .{str},
                 )),
                 .ident => |ident| _ = try w.write(try fmt.allocPrint(
@@ -309,7 +331,7 @@ test "tokenListToString" {
     defer arena.deinit();
     var allocator = &arena.allocator;
     var tokens = std.ArrayList(Token).init(allocator);
-    const str: []const u8 = "Hello, World!\\n";
+    const str: []const u8 = "\"Hello, World!\\n\"";
     const tok_array = [6]Token{
         Token{ .line = 4, .col = 1, .typ = .kw_print },
         Token{ .line = 4, .col = 6, .typ = .left_paren },
