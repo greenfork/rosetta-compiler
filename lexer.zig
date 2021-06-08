@@ -373,6 +373,7 @@ pub fn main() !void {
             break :blk std.io.getStdIn();
         }
     };
+    defer file_handle.close();
     const input_content = try file_handle.readToEndAlloc(allocator, std.math.maxInt(usize));
 
     const tokens = try lex(allocator, input_content);
