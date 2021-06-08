@@ -292,45 +292,33 @@ pub const Lexer = struct {
         return result;
     }
 
+    fn nextOrEmpty(self: *Self) LexerError!u8 {
+        return self.next() orelse LexerError.EmptyCharacterConstant;
+    }
+
     fn integerChar(self: *Self) LexerError!Token {
         var result = self.buildTokenT(.integer);
         const init_offset = self.offset;
-        if (self.next()) |ch| {
-            switch (ch) {
-                '\'', '\n' => return LexerError.EmptyCharacterConstant,
-                '\\' => {
-                    if (self.next()) |escaped_ch| {
-                        switch (escaped_ch) {
-                            'n' => result.value = TokenValue{ .intchar = '\n' },
-                            '\\' => result.value = TokenValue{ .intchar = '\\' },
-                            else => return LexerError.EmptyCharacterConstant,
-                        }
-                        if (self.next()) |closing_quote| {
-                            switch (closing_quote) {
-                                '\'' => {},
-                                else => return LexerError.MulticharacterConstant,
-                            }
-                        } else {
-                            return LexerError.EmptyCharacterConstant;
-                        }
-                    } else {
-                        return LexerError.EmptyCharacterConstant;
-                    }
-                },
-                else => {
-                    result.value = TokenValue{ .intchar = self.curr() };
-                    if (self.next()) |closing_quote| {
-                        switch (closing_quote) {
-                            '\'' => {},
-                            else => return LexerError.MulticharacterConstant,
-                        }
-                    } else {
-                        return LexerError.EmptyCharacterConstant;
-                    }
-                },
-            }
-        } else {
-            return LexerError.EmptyCharacterConstant;
+        switch (try self.nextOrEmpty()) {
+            '\'', '\n' => return LexerError.EmptyCharacterConstant,
+            '\\' => {
+                switch (try self.nextOrEmpty()) {
+                    'n' => result.value = TokenValue{ .intchar = '\n' },
+                    '\\' => result.value = TokenValue{ .intchar = '\\' },
+                    else => return LexerError.EmptyCharacterConstant,
+                }
+                switch (try self.nextOrEmpty()) {
+                    '\'' => {},
+                    else => return LexerError.MulticharacterConstant,
+                }
+            },
+            else => {
+                result.value = TokenValue{ .intchar = self.curr() };
+                switch (try self.nextOrEmpty()) {
+                    '\'' => {},
+                    else => return LexerError.MulticharacterConstant,
+                }
+            },
         }
         return result;
     }
