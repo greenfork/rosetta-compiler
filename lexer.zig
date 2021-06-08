@@ -78,7 +78,7 @@ pub const TokenType = enum {
 pub const TokenValue = union(enum) {
     ident: []const u8,
     intlit: i64,
-    intchar: u8,
+    intchar: i64,
     string: []const u8,
 };
 
@@ -260,10 +260,11 @@ pub const Lexer = struct {
     }
 
     fn consecutive(self: *Self, by: u8, typ: TokenType) LexerError!Token {
+        const result = self.buildTokenT(typ);
         if (self.peek()) |ch| {
             if (ch == by) {
                 _ = self.next(); // peeked character
-                return self.buildTokenT(typ);
+                return result;
             } else {
                 return LexerError.UnrecognizedCharacter;
             }
@@ -290,6 +291,49 @@ pub const Lexer = struct {
         };
         return result;
     }
+
+    fn integerChar(self: *Self) LexerError!Token {
+        var result = self.buildTokenT(.integer);
+        const init_offset = self.offset;
+        if (self.next()) |ch| {
+            switch (ch) {
+                '\'', '\n' => return LexerError.EmptyCharacterConstant,
+                '\\' => {
+                    if (self.next()) |escaped_ch| {
+                        switch (escaped_ch) {
+                            'n' => result.value = TokenValue{ .intchar = '\n' },
+                            '\\' => result.value = TokenValue{ .intchar = '\\' },
+                            else => return LexerError.EmptyCharacterConstant,
+                        }
+                        if (self.next()) |closing_quote| {
+                            switch (closing_quote) {
+                                '\'' => {},
+                                else => return LexerError.MulticharacterConstant,
+                            }
+                        } else {
+                            return LexerError.EmptyCharacterConstant;
+                        }
+                    } else {
+                        return LexerError.EmptyCharacterConstant;
+                    }
+                },
+                else => {
+                    result.value = TokenValue{ .intchar = self.curr() };
+                    if (self.next()) |closing_quote| {
+                        switch (closing_quote) {
+                            '\'' => {},
+                            else => return LexerError.MulticharacterConstant,
+                        }
+                    } else {
+                        return LexerError.EmptyCharacterConstant;
+                    }
+                },
+            }
+        } else {
+            return LexerError.EmptyCharacterConstant;
+        }
+        return result;
+    }
 };
 
 pub fn lex(allocator: *std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
@@ -313,13 +357,14 @@ pub fn lex(allocator: *std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
             ';' => try tokens.append(lexer.buildTokenT(.semicolon)),
             ',' => try tokens.append(lexer.buildTokenT(.comma)),
             '&' => try tokens.append(try lexer.consecutive('&', .bool_and)),
-            '|' => try tokens.append(try lexer.consecutive('|', .bool_and)),
+            '|' => try tokens.append(try lexer.consecutive('|', .bool_or)),
             '/' => {
                 if (try lexer.divOrComment()) |token| try tokens.append(token);
             },
             '_', 'a'...'z', 'A'...'Z' => try tokens.append(try lexer.identifierOrKeyword()),
             '"' => try tokens.append(try lexer.string()),
             '0'...'9' => try tokens.append(try lexer.integerLiteral()),
+            '\'' => try tokens.append(try lexer.integerChar()),
             else => {},
         }
     }
@@ -333,13 +378,13 @@ pub fn main() !void {
     defer arena.deinit();
     var allocator = &arena.allocator;
 
-    const example_input_path = "examples/input1.txt";
+    const example_input_path = "examples/input2.txt";
     var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
     defer std.fs.File.close(file_input);
     const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
     printContent(content_input, "Input");
 
-    const example_output_path = "examples/lexed1.txt";
+    const example_output_path = "examples/lexed2.txt";
     var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
     defer std.fs.File.close(file_output);
     const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
@@ -381,7 +426,7 @@ fn tokenListToString(allocator: *std.mem.Allocator, token_list: std.ArrayList(To
                 )),
                 .intchar => |ch| _ = try w.write(try fmt.allocPrint(
                     allocator,
-                    init_fmt ++ "{c}\n",
+                    init_fmt ++ "{d}\n",
                     common_args ++ .{ch},
                 )),
             }
@@ -443,6 +488,26 @@ test "lexer" {
     try testing.expect(null == lexer.next());
 }
 
+fn squishSpaces(allocator: *std.mem.Allocator, str: []const u8) ![]u8 {
+    var result = std.ArrayList(u8).init(allocator);
+    var was_space = false;
+    for (str) |ch| {
+        switch (ch) {
+            ' ' => {
+                if (!was_space) {
+                    was_space = true;
+                    try result.append(ch);
+                }
+            },
+            else => {
+                was_space = false;
+                try result.append(ch);
+            },
+        }
+    }
+    return result.items;
+}
+
 test "examples" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -462,7 +527,9 @@ test "examples" {
         const tokens = try lex(allocator, content_input);
         const pretty_output = try tokenListToString(allocator, tokens);
 
-        try testing.expectFmt(content_output, "{s}", .{pretty_output});
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
     }
 
     {
@@ -479,6 +546,27 @@ test "examples" {
         const tokens = try lex(allocator, content_input);
         const pretty_output = try tokenListToString(allocator, tokens);
 
-        try testing.expectFmt(content_output, "{s}", .{pretty_output});
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/input2.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/lexed2.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const tokens = try lex(allocator, content_input);
+        const pretty_output = try tokenListToString(allocator, tokens);
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
     }
 }
