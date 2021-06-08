@@ -362,19 +362,20 @@ pub fn main() !void {
     defer arena.deinit();
     var allocator = &arena.allocator;
 
-    const example_input_path = "examples/input2.txt";
-    var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
-    defer std.fs.File.close(file_input);
-    const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
-    printContent(content_input, "Input");
+    var arg_it = std.process.args();
+    _ = try arg_it.next(allocator) orelse unreachable; // program name
+    const file_name = arg_it.next(allocator);
+    var file_handle = blk: {
+        if (file_name) |file_name_delimited| {
+            const fname: []const u8 = try file_name_delimited;
+            break :blk try std.fs.cwd().openFile(fname, .{});
+        } else {
+            break :blk std.io.getStdIn();
+        }
+    };
+    const input_content = try file_handle.readToEndAlloc(allocator, std.math.maxInt(usize));
 
-    const example_output_path = "examples/lexed2.txt";
-    var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
-    defer std.fs.File.close(file_output);
-    const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
-    printContent(content_output, "Lexed");
-
-    const tokens = try lex(allocator, content_input);
+    const tokens = try lex(allocator, input_content);
     const pretty_output = try tokenListToString(allocator, tokens);
     printContent(pretty_output, "Result");
 }
