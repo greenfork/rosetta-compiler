@@ -257,18 +257,34 @@ fn tokenListToString(allocator: *std.mem.Allocator, token_list: std.ArrayList(To
     var result = std.ArrayList(u8).init(allocator);
     var w = result.writer();
     for (token_list.items) |token| {
-        _ = try w.write(try fmt.allocPrint(allocator, "{d:>5}", .{token.line}));
-        _ = try w.write(try fmt.allocPrint(allocator, "{d:>5}", .{token.col}));
-        _ = try w.write(try fmt.allocPrint(allocator, " {s:<15}", .{token.typ.toString()}));
+        const common_args = .{ token.line, token.col, token.typ.toString() };
         if (token.value) |value| {
+            const init_fmt = "{d:>5}{d:>5} {s:<15}";
             switch (value) {
-                .string => |str| _ = try w.write(try fmt.allocPrint(allocator, "\"{s}\"", .{str})),
-                .ident => |ident| _ = try w.write(try fmt.allocPrint(allocator, "{s}", .{ident})),
-                .intlit => |i| _ = try w.write(try fmt.allocPrint(allocator, "{d}", .{i})),
-                .intchar => |ch| _ = try w.write(try fmt.allocPrint(allocator, "{c}", .{ch})),
+                .string => |str| _ = try w.write(try fmt.allocPrint(
+                    allocator,
+                    init_fmt ++ "\"{s}\"\n",
+                    common_args ++ .{str},
+                )),
+                .ident => |ident| _ = try w.write(try fmt.allocPrint(
+                    allocator,
+                    init_fmt ++ "{s}\n",
+                    common_args ++ .{ident},
+                )),
+                .intlit => |i| _ = try w.write(try fmt.allocPrint(
+                    allocator,
+                    init_fmt ++ "{d}\n",
+                    common_args ++ .{i},
+                )),
+                .intchar => |ch| _ = try w.write(try fmt.allocPrint(
+                    allocator,
+                    init_fmt ++ "{c}\n",
+                    common_args ++ .{ch},
+                )),
             }
+        } else {
+            _ = try w.write(try fmt.allocPrint(allocator, "{d:>5}{d:>5} {s}\n", common_args));
         }
-        _ = try w.write("\n");
     }
     if (result.items.len > 0) _ = result.pop(); // final newline
     return result.items;
@@ -291,12 +307,12 @@ test "tokenListToString" {
     var token_list = std.ArrayList(Token).init(allocator);
     (try token_list.addManyAsArray(6)).* = tok_array;
     const expected =
-        \\    4    1 Keyword_print  
-        \\    4    6 LeftParen      
+        \\    4    1 Keyword_print
+        \\    4    6 LeftParen
         \\    4    7 String         "Hello, World!\n"
-        \\    4   24 RightParen     
-        \\    4   25 Semicolon      
-        \\    5    1 End_of_input   
+        \\    4   24 RightParen
+        \\    4   25 Semicolon
+        \\    5    1 End_of_input
     ;
     const result = try tokenListToString(allocator, token_list);
 
