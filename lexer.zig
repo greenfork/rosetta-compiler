@@ -210,6 +210,11 @@ pub const Lexer = struct {
 
         return result;
     }
+
+    fn string(self: *Self, allocator: *std.mem.Allocator) !Token {
+        var result = Token.build(self.*, .identifier, null);
+        return result;
+    }
 };
 
 pub fn lex(allocator: *std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
@@ -222,6 +227,9 @@ pub fn lex(allocator: *std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
             },
             '_', 'a'...'z', 'A'...'Z' => {
                 try tokens.append(try lexer.identifierOrKeyword(allocator));
+            },
+            '"' => {
+                try tokens.append(try lexer.string(allocator));
             },
             else => {},
         }
