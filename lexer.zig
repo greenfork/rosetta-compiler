@@ -187,7 +187,7 @@ pub const Lexer = struct {
         return result;
     }
 
-    fn identifierOrKeyword(self: *Self, allocator: *std.mem.Allocator) !Token {
+    fn identifierOrKeyword(self: *Self) !Token {
         var result = self.buildToken();
         const init_offset = self.offset;
         while (self.peek()) |ch| : (_ = self.next()) {
@@ -216,7 +216,7 @@ pub const Lexer = struct {
         return result;
     }
 
-    fn string(self: *Self, allocator: *std.mem.Allocator) !Token {
+    fn string(self: *Self) !Token {
         var result = self.buildToken();
         result.typ = .string;
         const init_offset = self.offset;
@@ -271,6 +271,25 @@ pub const Lexer = struct {
             return LexerError.UnrecognizedCharacter;
         }
     }
+
+    fn integerLiteral(self: *Self) LexerError!Token {
+        var result = self.buildTokenT(.integer);
+        const init_offset = self.offset;
+        while (self.peek()) |ch| {
+            switch (ch) {
+                '0'...'9' => _ = self.next(), // peeked character
+                '_', 'a'...'z', 'A'...'Z' => return LexerError.InvalidNumber,
+                else => break,
+            }
+        }
+        const final_offset = self.offset + 1;
+        result.value = TokenValue{
+            .intlit = std.fmt.parseInt(i64, self.content[init_offset..final_offset], 10) catch {
+                return LexerError.InvalidNumber;
+            },
+        };
+        return result;
+    }
 };
 
 pub fn lex(allocator: *std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
@@ -278,6 +297,7 @@ pub fn lex(allocator: *std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
     var lexer = Lexer.init(content);
     while (lexer.next()) |ch| {
         switch (ch) {
+            ' ' => {},
             '*' => try tokens.append(lexer.buildTokenT(.multiply)),
             '%' => try tokens.append(lexer.buildTokenT(.mod)),
             '+' => try tokens.append(lexer.buildTokenT(.add)),
@@ -297,12 +317,9 @@ pub fn lex(allocator: *std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
             '/' => {
                 if (try lexer.divOrComment()) |token| try tokens.append(token);
             },
-            '_', 'a'...'z', 'A'...'Z' => {
-                try tokens.append(try lexer.identifierOrKeyword(allocator));
-            },
-            '"' => {
-                try tokens.append(try lexer.string(allocator));
-            },
+            '_', 'a'...'z', 'A'...'Z' => try tokens.append(try lexer.identifierOrKeyword()),
+            '"' => try tokens.append(try lexer.string()),
+            '0'...'9' => try tokens.append(try lexer.integerLiteral()),
             else => {},
         }
     }
@@ -317,20 +334,25 @@ pub fn main() !void {
     defer arena.deinit();
     var allocator = &arena.allocator;
 
-    const example_path = "examples/input0.txt";
-    var file = try std.fs.cwd().openFile(example_path, std.fs.File.OpenFlags{});
-    defer std.fs.File.close(file);
+    const example_input_path = "examples/input1.txt";
+    var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+    defer std.fs.File.close(file_input);
+    const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+    printContent(content_input, "Input");
 
-    const content = try std.fs.File.readToEndAlloc(file, allocator, std.math.maxInt(usize));
-    printContent(content);
+    const example_output_path = "examples/lexed1.txt";
+    var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+    defer std.fs.File.close(file_output);
+    const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+    printContent(content_output, "Lexed");
 
-    const tokens = try lex(allocator, content);
+    const tokens = try lex(allocator, content_input);
     const pretty_output = try tokenListToString(allocator, tokens);
-    printContent(pretty_output);
+    printContent(pretty_output, "Result");
 }
 
-fn printContent(content: []u8) void {
-    p("==================== File start =====================\n\n", .{});
+fn printContent(content: []u8, title: []const u8) void {
+    p("==================== {s:<10} =====================\n\n", .{title});
     p("{s}", .{content});
     p("\n==================== File end =======================\n", .{});
 }
