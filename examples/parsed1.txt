@@ -1,0 +1,15 @@
+Sequence
+Sequence
+;
+Assign
+Identifier    phoenix_number
+Integer       142857
+Sequence
+Sequence
+;
+Prti
+Identifier    phoenix_number
+;
+Prts
+String        "\n"
+;

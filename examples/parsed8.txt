@@ -1,0 +1,35 @@
+Sequence
+Sequence
+Sequence
+Sequence
+;
+Assign
+Identifier     a
+Integer        1071
+Assign
+Identifier     b
+Integer        1029
+While
+NotEqual
+Identifier     b
+Integer        0
+Sequence
+Sequence
+Sequence
+;
+Assign
+Identifier     new_a
+Identifier     b
+Assign
+Identifier     b
+Mod
+Identifier     a
+Identifier     b
+Assign
+Identifier     a
+Identifier     new_a
+Sequence
+;
+Prti
+Identifier     a
+;

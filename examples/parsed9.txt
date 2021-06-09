@@ -1,0 +1,37 @@
+Sequence
+Sequence
+Sequence
+Sequence
+Sequence
+;
+Assign
+Identifier     n
+Integer        12
+Assign
+Identifier     result
+Integer        1
+Assign
+Identifier     i
+Integer        1
+While
+LessEqual
+Identifier     i
+Identifier     n
+Sequence
+Sequence
+;
+Assign
+Identifier     result
+Multiply
+Identifier     result
+Identifier     i
+Assign
+Identifier     i
+Add
+Identifier     i
+Integer        1
+Sequence
+;
+Prti
+Identifier     result
+;

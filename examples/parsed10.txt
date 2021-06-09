@@ -1,0 +1,53 @@
+Sequence
+Sequence
+Sequence
+Sequence
+Sequence
+Sequence
+;
+Assign
+Identifier     n
+Integer        44
+Assign
+Identifier     i
+Integer        1
+Assign
+Identifier     a
+Integer        0
+Assign
+Identifier     b
+Integer        1
+While
+Less
+Identifier     i
+Identifier     n
+Sequence
+Sequence
+Sequence
+Sequence
+;
+Assign
+Identifier     w
+Add
+Identifier     a
+Identifier     b
+Assign
+Identifier     a
+Identifier     b
+Assign
+Identifier     b
+Identifier     w
+Assign
+Identifier     i
+Add
+Identifier     i
+Integer        1
+Sequence
+Sequence
+;
+Prti
+Identifier     w
+;
+Prts
+String         "\n"
+;

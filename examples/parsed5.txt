@@ -1,0 +1,35 @@
+Sequence
+Sequence
+;
+Assign
+Identifier     i
+Integer        1
+While
+LessEqual
+Multiply
+Identifier     i
+Identifier     i
+Integer        100
+Sequence
+Sequence
+;
+Sequence
+Sequence
+Sequence
+;
+Prts
+String         "door "
+;
+Prti
+Multiply
+Identifier     i
+Identifier     i
+;
+Prts
+String         " is open\n"
+;
+Assign
+Identifier     i
+Add
+Identifier     i
+Integer        1

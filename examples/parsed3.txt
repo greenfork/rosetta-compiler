@@ -1,0 +1,19 @@
+Sequence
+Sequence
+Sequence
+;
+Sequence
+;
+Prti
+Integer       42
+;
+Sequence
+;
+Prts
+String        "\nHello World\nGood Bye\nok\n"
+;
+Sequence
+;
+Prts
+String        "Print a slash n - \\n.\n"
+;

@@ -1,0 +1,67 @@
+Sequence
+Sequence
+Sequence
+Sequence
+Sequence
+Sequence
+;
+Assign
+Identifier    a
+Multiply
+Negate
+Integer       1
+;
+Divide
+Multiply
+Negate
+Integer       1
+;
+Multiply
+Integer       5
+Integer       15
+Integer       10
+Sequence
+Sequence
+;
+Prti
+Identifier    a
+;
+Prts
+String        "\n"
+;
+Assign
+Identifier    b
+Negate
+Identifier    a
+;
+Sequence
+Sequence
+;
+Prti
+Identifier    b
+;
+Prts
+String        "\n"
+;
+Sequence
+Sequence
+;
+Prti
+Negate
+Identifier    b
+;
+;
+Prts
+String        "\n"
+;
+Sequence
+Sequence
+;
+Prti
+Negate
+Integer       1
+;
+;
+Prts
+String        "\n"
+;
