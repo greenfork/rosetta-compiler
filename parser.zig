@@ -36,75 +36,42 @@ pub const TokenType = enum {
     string,
     eof,
 
-    const eql = std.mem.eql;
-    const tk = TokenType;
+    const from_string_map = std.ComptimeStringMap(TokenType, .{
+        .{ "Op_multiply", .multiply },
+        .{ "Op_divide", .divide },
+        .{ "Op_mod", .mod },
+        .{ "Op_add", .add },
+        .{ "Op_subtract", .subtract },
+        .{ "Op_negate", .negate },
+        .{ "Op_less", .less },
+        .{ "Op_lessequal", .less_equal },
+        .{ "Op_greater", .greater },
+        .{ "Op_greaterequal", .greater_equal },
+        .{ "Op_equal", .equal },
+        .{ "Op_notequal", .not_equal },
+        .{ "Op_not", .not },
+        .{ "Op_assign", .assign },
+        .{ "Op_and", .bool_and },
+        .{ "Op_or", .bool_or },
+        .{ "LeftParen", .left_paren },
+        .{ "RightParen", .right_paren },
+        .{ "LeftBrace", .left_brace },
+        .{ "RightBrace", .right_brace },
+        .{ "Semicolon", .semicolon },
+        .{ "Comma", .comma },
+        .{ "Keyword_if", .kw_if },
+        .{ "Keyword_else", .kw_else },
+        .{ "Keyword_while", .kw_while },
+        .{ "Keyword_print", .kw_print },
+        .{ "Keyword_putc", .kw_putc },
+        .{ "Identifier", .identifier },
+        .{ "Integer", .integer },
+        .{ "String", .string },
+        .{ "End_of_input", .eof },
+    });
 
     pub fn fromString(str: []const u8) TokenType {
-        if (eql(u8, str, "Op_multiply")) {
-            return tk.multiply;
-        } else if (eql(u8, str, "Op_divide")) {
-            return tk.divide;
-        } else if (eql(u8, str, "Op_mod")) {
-            return tk.mod;
-        } else if (eql(u8, str, "Op_add")) {
-            return tk.add;
-        } else if (eql(u8, str, "Op_subtract")) {
-            return tk.subtract;
-        } else if (eql(u8, str, "Op_negate")) {
-            return tk.negate;
-        } else if (eql(u8, str, "Op_less")) {
-            return tk.less;
-        } else if (eql(u8, str, "Op_lessequal")) {
-            return tk.less_equal;
-        } else if (eql(u8, str, "Op_greater")) {
-            return tk.greater;
-        } else if (eql(u8, str, "Op_greaterequal")) {
-            return tk.greater_equal;
-        } else if (eql(u8, str, "Op_equal")) {
-            return tk.equal;
-        } else if (eql(u8, str, "Op_notequal")) {
-            return tk.not_equal;
-        } else if (eql(u8, str, "Op_not")) {
-            return tk.not;
-        } else if (eql(u8, str, "Op_assign")) {
-            return tk.assign;
-        } else if (eql(u8, str, "Op_and")) {
-            return tk.bool_and;
-        } else if (eql(u8, str, "Op_or")) {
-            return tk.bool_or;
-        } else if (eql(u8, str, "LeftParen")) {
-            return tk.left_paren;
-        } else if (eql(u8, str, "RightParen")) {
-            return tk.right_paren;
-        } else if (eql(u8, str, "LeftBrace")) {
-            return tk.left_brace;
-        } else if (eql(u8, str, "RightBrace")) {
-            return tk.right_brace;
-        } else if (eql(u8, str, "Semicolon")) {
-            return tk.semicolon;
-        } else if (eql(u8, str, "Comma")) {
-            return tk.comma;
-        } else if (eql(u8, str, "Keyword_if")) {
-            return tk.kw_if;
-        } else if (eql(u8, str, "Keyword_else")) {
-            return tk.kw_else;
-        } else if (eql(u8, str, "Keyword_while")) {
-            return tk.kw_while;
-        } else if (eql(u8, str, "Keyword_print")) {
-            return tk.kw_print;
-        } else if (eql(u8, str, "Keyword_putc")) {
-            return tk.kw_putc;
-        } else if (eql(u8, str, "Identifier")) {
-            return tk.identifier;
-        } else if (eql(u8, str, "Integer")) {
-            return tk.integer;
-        } else if (eql(u8, str, "String")) {
-            return tk.string;
-        } else if (eql(u8, str, "End_of_input")) {
-            return tk.eof;
-        } else {
-            return tk.unknown;
-        }
+        return from_string_map.get(str).?;
     }
 };
 
