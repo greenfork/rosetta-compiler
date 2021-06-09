@@ -160,33 +160,51 @@ fn printContent(content: []u8, title: []const u8) void {
     p("\n==================== File end =======================\n", .{});
 }
 
+pub const LexerOutputTokenizer = struct {
+    it: std.mem.SplitIterator,
+
+    const Self = @This();
+
+    pub fn init(str: []const u8) Self {
+        return Self{ .it = std.mem.split(str, "\n") };
+    }
+
+    pub fn next(self: *Self) !?Token {
+        if (self.it.next()) |line| {
+            if (line.len == 0) return null;
+            var tokens_it = std.mem.tokenize(line, " ");
+            const lineNumber = try std.fmt.parseInt(usize, tokens_it.next().?, 10);
+            const colNumber = try std.fmt.parseInt(usize, tokens_it.next().?, 10);
+            const typ_text = tokens_it.next().?;
+            const typ = TokenType.fromString(typ_text);
+            const pre_value_index = tokens_it.index;
+            const value = tokens_it.next();
+            var token = Token{ .line = lineNumber, .col = colNumber, .typ = typ };
+            if (value) |val| {
+                const token_value = blk: {
+                    switch (typ) {
+                        .string => {
+                            tokens_it.index = pre_value_index;
+                            break :blk TokenValue{ .string = tokens_it.rest() };
+                        },
+                        .integer => break :blk TokenValue{ .integer = try std.fmt.parseInt(i64, val, 10) },
+                        .identifier => break :blk TokenValue{ .identifier = val },
+                        else => unreachable,
+                    }
+                };
+                token.value = token_value;
+            }
+            return token;
+        } else {
+            return null;
+        }
+    }
+};
+
 fn stringToTokenList(allocator: *std.mem.Allocator, str: []const u8) !std.ArrayList(Token) {
     var result = std.ArrayList(Token).init(allocator);
-    var lines = std.mem.split(str, "\n");
-    while (lines.next()) |line| {
-        if (line.len == 0) break;
-        var tokens_it = std.mem.tokenize(line, " ");
-        const lineNumber = try std.fmt.parseInt(usize, tokens_it.next().?, 10);
-        const colNumber = try std.fmt.parseInt(usize, tokens_it.next().?, 10);
-        const typ_text = tokens_it.next().?;
-        const typ = TokenType.fromString(typ_text);
-        const pre_value_index = tokens_it.index;
-        const value = tokens_it.next();
-        var token = Token{ .line = lineNumber, .col = colNumber, .typ = typ };
-        if (value) |val| {
-            const token_value = blk: {
-                switch (typ) {
-                    .string => {
-                        tokens_it.index = pre_value_index;
-                        break :blk TokenValue{ .string = tokens_it.rest() };
-                    },
-                    .integer => break :blk TokenValue{ .integer = try std.fmt.parseInt(i64, val, 10) },
-                    .identifier => break :blk TokenValue{ .identifier = val },
-                    else => unreachable,
-                }
-            };
-            token.value = token_value;
-        }
+    var lexer_output_it = LexerOutputTokenizer.init(str);
+    while (try lexer_output_it.next()) |token| {
         try result.append(token);
     }
     return result;
