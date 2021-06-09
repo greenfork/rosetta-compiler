@@ -75,6 +75,57 @@ pub const TokenType = enum {
     }
 };
 
+const NodeMetadata = struct {
+    token_type: TokenType,
+    right_associative: bool,
+    binary: bool,
+    unary: bool,
+    precedence: i8,
+    node_type: NodeType,
+
+    const self = [_]NodeMetadata{
+        .{ .token_type = .multiply, .right_associative = false, .binary = true, .unary = false, .precedence = 13, .node_type = .multiply },
+        .{ .token_type = .divide, .right_associative = false, .binary = true, .unary = false, .precedence = 13, .node_type = .divide },
+        .{ .token_type = .mod, .right_associative = false, .binary = true, .unary = false, .precedence = 13, .node_type = .mod },
+        .{ .token_type = .add, .right_associative = false, .binary = true, .unary = false, .precedence = 12, .node_type = .add },
+        .{ .token_type = .subtract, .right_associative = false, .binary = true, .unary = false, .precedence = 12, .node_type = .subtract },
+        .{ .token_type = .negate, .right_associative = false, .binary = false, .unary = true, .precedence = 14, .node_type = .negate },
+        .{ .token_type = .less, .right_associative = false, .binary = true, .unary = false, .precedence = 10, .node_type = .less },
+        .{ .token_type = .less_equal, .right_associative = false, .binary = true, .unary = false, .precedence = 10, .node_type = .less_equal },
+        .{ .token_type = .greater, .right_associative = false, .binary = true, .unary = false, .precedence = 10, .node_type = .greater },
+        .{ .token_type = .greater_equal, .right_associative = false, .binary = true, .unary = false, .precedence = 10, .node_type = .greater_equal },
+        .{ .token_type = .equal, .right_associative = false, .binary = true, .unary = false, .precedence = 9, .node_type = .equal },
+        .{ .token_type = .not_equal, .right_associative = false, .binary = true, .unary = false, .precedence = 9, .node_type = .not_equal },
+        .{ .token_type = .not, .right_associative = false, .binary = false, .unary = true, .precedence = 14, .node_type = .not },
+        .{ .token_type = .assign, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .assign },
+        .{ .token_type = .bool_and, .right_associative = false, .binary = true, .unary = false, .precedence = 5, .node_type = .bool_and },
+        .{ .token_type = .bool_or, .right_associative = false, .binary = true, .unary = false, .precedence = 4, .node_type = .bool_or },
+        .{ .token_type = .left_paren, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown },
+        .{ .token_type = .right_paren, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown },
+        .{ .token_type = .left_brace, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown },
+        .{ .token_type = .right_brace, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown },
+        .{ .token_type = .semicolon, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown },
+        .{ .token_type = .comma, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown },
+        .{ .token_type = .kw_if, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .kw_if },
+        .{ .token_type = .kw_else, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown },
+        .{ .token_type = .kw_while, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .kw_while },
+        .{ .token_type = .kw_print, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown },
+        .{ .token_type = .kw_putc, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown },
+        .{ .token_type = .identifier, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .identifier },
+        .{ .token_type = .integer, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .integer },
+        .{ .token_type = .string, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .string },
+        .{ .token_type = .eof, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown },
+    };
+
+    pub fn find(token: TokenType) NodeMetadata {
+        for (self) |metadata| {
+            if (metadata.token_type == token.typ) return metadata;
+        } else {
+            unreachable;
+        }
+    }
+};
+
 pub const TokenValue = union(enum) {
     identifier: []const u8,
     integer: i64,
@@ -86,6 +137,10 @@ pub const Token = struct {
     col: usize,
     typ: TokenType = .unknown,
     value: ?TokenValue = null,
+
+    fn init() Token {
+        return Token{ .line = 0, .col = 0, .typ = .unknown };
+    }
 };
 
 pub const NodeType = enum {
@@ -121,13 +176,109 @@ pub const NodeValue = union(enum) {
     identifier: []const u8,
     integer: i64,
     string: []const u8,
+
+    fn fromToken(token: Token) ?NodeValue {
+        if (token.value) |value| {
+            switch (value) {
+                .identifier => |ident| return NodeValue{ .identifier = ident },
+                .integer => |int| return NodeValue{ .integer = int },
+                .string => |str| return NodeValue{ .string = str },
+            }
+        } else {
+            return null;
+        }
+    }
 };
 
-pub const Node = struct {
-    left: ?Node,
-    right: ?Node,
-    typ: NodeType,
-    value: ?NodeValue,
+pub const Tree = struct {
+    left: ?*Tree,
+    right: ?*Tree,
+    typ: NodeType = .unknown,
+    value: ?NodeValue = null,
+};
+
+pub const ParserError = error{
+    ExpectedNotFound,
+};
+
+pub const Parser = struct {
+    token_it: LexerOutputTokenizer,
+    curr: Token,
+    allocator: *std.mem.Allocator,
+
+    const Self = @This();
+
+    pub fn init(allocator: *std.mem.Allocator, str: []const u8) Self {
+        return Self{
+            .token_it = LexerOutputTokenizer.init(str),
+            .curr = Token.init(),
+            .allocator = allocator,
+        };
+    }
+
+    pub fn makeNode(self: *Self, typ: NodeType, left: ?*Tree, right: ?*Tree) !*Tree {
+        const result = try self.allocator.create(Tree);
+        result.* = Tree{ .left = left, .right = right, .typ = typ };
+        return result;
+    }
+
+    pub fn makeLeaf(self: *Self, typ: NodeType, value: ?NodeValue) !*Tree {
+        const result = try self.allocator.create(Tree);
+        result.* = Tree{ .left = null, .right = null, .typ = typ, .value = value };
+        return result;
+    }
+
+    pub fn parse(self: *Self) !*Tree {
+        try self.next();
+        _ = NodeMetadata.self;
+        _ = try self.parse_stmt();
+        return try self.makeNode(.sequence, null, null);
+    }
+
+    fn parse_stmt(self: *Self) !?*Tree {
+        var result: ?*Tree = null;
+        switch (self.curr.typ) {
+            .kw_print => {
+                try self.expect(.left_paren);
+                while (self.curr.typ != .comma) {
+                    var e: ?*Tree = null;
+                    if (self.curr.typ == .string) {
+                        e = try self.makeNode(
+                            .prts,
+                            try self.makeLeaf(.string, NodeValue.fromToken(self.curr)),
+                            null,
+                        );
+                        try self.next();
+                    } else {
+                        e = try self.makeNode(.prti, try self.parse_expr(0), null);
+                    }
+                    result = try self.makeNode(.sequence, result, e);
+                }
+                try self.expect(.right_paren);
+                try self.expect(.semicolon);
+            },
+            else => unreachable,
+        }
+        return result;
+    }
+
+    fn parse_expr(self: *Self, precedence: i8) !?*Tree {
+        return try self.makeLeaf(.integer, NodeValue{ .integer = 10 });
+    }
+
+    fn next(self: *Self) !void {
+        const token = try self.token_it.next();
+        if (token) |tok| {
+            self.curr = tok;
+        } else {
+            self.curr = Token.init();
+        }
+    }
+
+    fn expect(self: *Self, token_type: TokenType) !void {
+        try self.next();
+        if (self.curr.typ != token_type) return ParserError.ExpectedNotFound;
+    }
 };
 
 pub fn main() !void {
@@ -149,7 +300,8 @@ pub fn main() !void {
     defer file_handle.close();
     const input_content = try file_handle.readToEndAlloc(allocator, std.math.maxInt(usize));
 
-    const tokens = try stringToTokenList(allocator, input_content);
+    var parser = Parser.init(allocator, input_content);
+    const result: *Tree = try parser.parse();
 
     printContent(input_content, "Result");
 }
