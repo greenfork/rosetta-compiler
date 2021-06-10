@@ -1,1 +1,1 @@
-(5, 40) Print: Expecting '(', found '-'
+(5, 40) error: Expecting '(', found '-'
