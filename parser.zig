@@ -190,7 +190,7 @@ pub const NodeType = enum {
             .multiply => "Multiply",
             .divide => "Divide",
             .mod => "Mod",
-            .add => "And",
+            .add => "Add",
             .subtract => "Subtract",
             .less => "Less",
             .less_equal => "LessEqual",
@@ -301,6 +301,18 @@ pub const Parser = struct {
                 try self.expect(.right_paren);
                 try self.expect(.semicolon);
             },
+            .kw_while => {
+                try self.next();
+                const expr = try self.parseParenExpr();
+                return try self.makeNode(.kw_while, expr, try self.parseStmt());
+            },
+            .left_brace => {
+                try self.next();
+                while (self.curr.typ != .right_brace and self.curr.typ != .eof) {
+                    result = try self.makeNode(.sequence, result, try self.parseStmt());
+                }
+                try self.expect(.right_brace);
+            },
             .identifier => {
                 const identifer = try self.makeLeaf(.identifier, NodeValue.fromToken(self.curr));
                 try self.next();
@@ -310,34 +322,53 @@ pub const Parser = struct {
                 try self.expect(.semicolon);
             },
             else => {
-                p("\nSTMT: UNKOWN {}\n", .{self.curr});
-                self.curr.typ = .eof;
-                return result;
+                p("\nSTMT: UNKNOWN {}\n", .{self.curr});
+                p("{}\n", .{result});
+                std.os.exit(1);
             },
         }
         return result;
     }
 
     fn parseExpr(self: *Self, precedence: i8) ParserError!?*Tree {
+        var result: ?*Tree = null;
         switch (self.curr.typ) {
             .left_paren => {
-                try self.next();
-                const result = try self.parseExpr(0);
-                try self.expect(.right_paren);
-                return result;
+                return try self.parseParenExpr();
             },
             .integer, .identifier => |typ| {
                 const node_type = NodeMetadata.find(typ).node_type;
-                const terminal = try self.makeLeaf(node_type, NodeValue.fromToken(self.curr));
+                result = try self.makeLeaf(node_type, NodeValue.fromToken(self.curr));
                 try self.next();
-                return terminal;
             },
             else => {
                 p("\nEXPR: UNKNOWN {}\n", .{self.curr});
-                self.curr.typ = .eof;
-                return try self.makeLeaf(.unknown, NodeValue{ .integer = 10 });
+                p("{}\n", .{result});
+                std.os.exit(1);
             },
         }
+
+        var curr_metadata = NodeMetadata.find(self.curr.typ);
+        while (curr_metadata.binary and curr_metadata.precedence >= precedence) {
+            const node_type = curr_metadata.node_type;
+            const new_precedence =
+                if (!curr_metadata.right_associative)
+                curr_metadata.precedence + 1
+            else
+                curr_metadata.precedence;
+            try self.next();
+            const sub_expr = try self.parseExpr(new_precedence);
+            result = try self.makeNode(node_type, result, sub_expr);
+            curr_metadata = NodeMetadata.find(self.curr.typ);
+        }
+        return result;
+    }
+
+    fn parseParenExpr(self: *Self) ParserError!?*Tree {
+        try self.expect(.left_paren);
+        const result = try self.parseExpr(0);
+        try self.expect(.right_paren);
+        return result;
     }
 
     fn next(self: *Self) ParserError!void {
@@ -625,6 +656,25 @@ test "examples" {
         const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
 
         const example_output_path = "examples/parsed3.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const ast = try parse(allocator, content_input);
+        const pretty_output = try astToFlattenedString(allocator, ast);
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/lexed4.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/parsed4.txt";
         var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
         defer std.fs.File.close(file_output);
         const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
