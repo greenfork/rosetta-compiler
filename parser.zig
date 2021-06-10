@@ -170,6 +170,37 @@ pub const NodeType = enum {
     not_equal,
     bool_and,
     bool_or,
+
+    pub fn toString(self: NodeType) []const u8 {
+        return switch (self) {
+            .unknown => "UNKNOWN",
+            .identifier => "Identifier",
+            .string => "String",
+            .integer => "Integer",
+            .sequence => "Sequence",
+            .kw_if => "If",
+            .prtc => "Prtc",
+            .prts => "Prts",
+            .prti => "Prti",
+            .kw_while => "While",
+            .assign => "Assign",
+            .negate => "Negate",
+            .not => "Not",
+            .multiply => "Multiply",
+            .divide => "Divide",
+            .mod => "Mod",
+            .add => "And",
+            .subtract => "Subtract",
+            .less => "Less",
+            .less_equal => "LessEqual",
+            .greater => "Greater",
+            .greater_equal => "GreaterEqual",
+            .equal => "Equal",
+            .not_equal => "NotEqual",
+            .bool_and => "And",
+            .bool_or => "Or",
+        };
+    }
 };
 
 pub const NodeValue = union(enum) {
@@ -228,19 +259,24 @@ pub const Parser = struct {
         return result;
     }
 
-    pub fn parse(self: *Self) !*Tree {
+    pub fn parse(self: *Self) !?*Tree {
         try self.next();
-        _ = NodeMetadata.self;
-        _ = try self.parse_stmt();
-        return try self.makeNode(.sequence, null, null);
+        var result: ?*Tree = null;
+        while (true) {
+            const stmt = try self.parse_stmt();
+            result = try self.makeNode(.sequence, result, stmt);
+            if (self.curr.typ == .eof) break;
+        }
+        return result;
     }
 
     fn parse_stmt(self: *Self) !?*Tree {
         var result: ?*Tree = null;
         switch (self.curr.typ) {
             .kw_print => {
+                try self.next();
                 try self.expect(.left_paren);
-                while (self.curr.typ != .comma) {
+                while (true) {
                     var e: ?*Tree = null;
                     if (self.curr.typ == .string) {
                         e = try self.makeNode(
@@ -253,6 +289,7 @@ pub const Parser = struct {
                         e = try self.makeNode(.prti, try self.parse_expr(0), null);
                     }
                     result = try self.makeNode(.sequence, result, e);
+                    if (self.curr.typ != .comma) break;
                 }
                 try self.expect(.right_paren);
                 try self.expect(.semicolon);
@@ -276,10 +313,15 @@ pub const Parser = struct {
     }
 
     fn expect(self: *Self, token_type: TokenType) !void {
-        try self.next();
         if (self.curr.typ != token_type) return ParserError.ExpectedNotFound;
+        try self.next();
     }
 };
+
+pub fn parse(allocator: *std.mem.Allocator, str: []const u8) !?*Tree {
+    var parser = Parser.init(allocator, str);
+    return try parser.parse();
+}
 
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -299,17 +341,68 @@ pub fn main() !void {
     };
     defer file_handle.close();
     const input_content = try file_handle.readToEndAlloc(allocator, std.math.maxInt(usize));
+    printContent(input_content, "Input");
 
-    var parser = Parser.init(allocator, input_content);
-    const result: *Tree = try parser.parse();
-
-    printContent(input_content, "Result");
+    const result: ?*Tree = try parse(allocator, input_content);
+    const result_str = try astToFlattenedString(allocator, result);
+    printContent(result_str, "AST");
 }
 
-fn printContent(content: []u8, title: []const u8) void {
+fn printContent(content: []const u8, title: []const u8) void {
     p("==================== {s:<10} =====================\n\n", .{title});
     p("{s}", .{content});
     p("\n==================== File end =======================\n", .{});
+}
+
+fn astToFlattenedString(allocator: *std.mem.Allocator, tree: ?*Tree) ![]const u8 {
+    var result = std.ArrayList(u8).init(allocator);
+    var writer = result.writer();
+    try treeToString(allocator, writer, tree);
+    return result.items;
+}
+
+const TreeToStringError = error{OutOfMemory};
+
+fn treeToString(allocator: *std.mem.Allocator, writer: std.ArrayList(u8).Writer, tree: ?*Tree) TreeToStringError!void {
+    if (tree) |t| {
+        _ = try writer.write(try std.fmt.allocPrint(
+            allocator,
+            "{s}",
+            .{t.typ.toString()},
+        ));
+        switch (t.typ) {
+            .identifier => _ = try writer.write(try std.fmt.allocPrint(
+                allocator,
+                "   {s}\n",
+                .{t.value.?.identifier},
+            )),
+            .string => _ = try writer.write(try std.fmt.allocPrint(
+                allocator,
+                "   {s}\n",
+                .{t.value.?.string},
+            )),
+            .integer => _ = try writer.write(try std.fmt.allocPrint(
+                allocator,
+                "   {d}\n",
+                .{t.value.?.integer},
+            )),
+            else => {
+                _ = try writer.write(try std.fmt.allocPrint(
+                    allocator,
+                    "\n",
+                    .{},
+                ));
+                try treeToString(allocator, writer, t.left);
+                try treeToString(allocator, writer, t.right);
+            },
+        }
+    } else {
+        _ = try writer.write(try std.fmt.allocPrint(
+            allocator,
+            ";\n",
+            .{},
+        ));
+    }
 }
 
 pub const LexerOutputTokenizer = struct {
@@ -401,4 +494,49 @@ test "stringToTokenList" {
     try testing.expectEqual(token_list.items[3], result.items[3]);
     try testing.expectEqual(token_list.items[4], result.items[4]);
     try testing.expectEqual(token_list.items[5], result.items[5]);
+}
+
+fn squishSpaces(allocator: *std.mem.Allocator, str: []const u8) ![]u8 {
+    var result = std.ArrayList(u8).init(allocator);
+    var was_space = false;
+    for (str) |ch| {
+        switch (ch) {
+            ' ' => {
+                if (!was_space) {
+                    was_space = true;
+                    try result.append(ch);
+                }
+            },
+            else => {
+                was_space = false;
+                try result.append(ch);
+            },
+        }
+    }
+    return result.items;
+}
+
+test "examples" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var allocator = &arena.allocator;
+
+    {
+        const example_input_path = "examples/lexed0.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/parsed0.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const ast = try parse(allocator, content_input);
+        const pretty_output = try astToFlattenedString(allocator, ast);
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
 }
