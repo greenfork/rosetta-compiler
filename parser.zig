@@ -247,13 +247,13 @@ pub const Parser = struct {
         };
     }
 
-    pub fn makeNode(self: *Self, typ: NodeType, left: ?*Tree, right: ?*Tree) !*Tree {
+    fn makeNode(self: *Self, typ: NodeType, left: ?*Tree, right: ?*Tree) !*Tree {
         const result = try self.allocator.create(Tree);
         result.* = Tree{ .left = left, .right = right, .typ = typ };
         return result;
     }
 
-    pub fn makeLeaf(self: *Self, typ: NodeType, value: ?NodeValue) !*Tree {
+    fn makeLeaf(self: *Self, typ: NodeType, value: ?NodeValue) !*Tree {
         const result = try self.allocator.create(Tree);
         result.* = Tree{ .left = null, .right = null, .typ = typ, .value = value };
         return result;
@@ -277,6 +277,7 @@ pub const Parser = struct {
                 try self.next();
                 try self.expect(.left_paren);
                 while (true) {
+                    // p("{}\n", .{self.curr});
                     var e: ?*Tree = null;
                     if (self.curr.typ == .string) {
                         e = try self.makeNode(
@@ -290,17 +291,35 @@ pub const Parser = struct {
                     }
                     result = try self.makeNode(.sequence, result, e);
                     if (self.curr.typ != .comma) break;
+                    try self.next();
                 }
+                // p("{}\n", .{self.curr});
                 try self.expect(.right_paren);
                 try self.expect(.semicolon);
             },
-            else => unreachable,
+            .identifier => {
+                const identifer = try self.makeLeaf(
+                    .identifier,
+                    NodeValue{ .identifier = self.curr.value.?.identifier },
+                );
+                try self.next();
+                try self.expect(.assign);
+                const expr = try self.parse_expr(0);
+                result = try self.makeNode(.assign, identifer, expr);
+                try self.expect(.semicolon);
+            },
+            else => {
+                p("\n\nUNKOWN TOKEN TYPE\n\n", .{});
+                self.curr.typ = .eof;
+                return result;
+            },
         }
         return result;
     }
 
     fn parse_expr(self: *Self, precedence: i8) !?*Tree {
-        return try self.makeLeaf(.integer, NodeValue{ .integer = 10 });
+        try self.next();
+        return try self.makeLeaf(.unknown, NodeValue{ .integer = 10 });
     }
 
     fn next(self: *Self) !void {
@@ -363,7 +382,11 @@ fn astToFlattenedString(allocator: *std.mem.Allocator, tree: ?*Tree) ![]const u8
 
 const TreeToStringError = error{OutOfMemory};
 
-fn treeToString(allocator: *std.mem.Allocator, writer: std.ArrayList(u8).Writer, tree: ?*Tree) TreeToStringError!void {
+fn treeToString(
+    allocator: *std.mem.Allocator,
+    writer: std.ArrayList(u8).Writer,
+    tree: ?*Tree,
+) TreeToStringError!void {
     if (tree) |t| {
         _ = try writer.write(try std.fmt.allocPrint(
             allocator,
