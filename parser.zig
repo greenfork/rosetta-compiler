@@ -301,6 +301,11 @@ pub const Parser = struct {
                 try self.expect(.right_paren);
                 try self.expect(.semicolon);
             },
+            .kw_putc => {
+                try self.next();
+                result = try self.makeNode(.prtc, try self.parseParenExpr(), null);
+                try self.expect(.semicolon);
+            },
             .kw_while => {
                 try self.next();
                 const expr = try self.parseParenExpr();
@@ -877,6 +882,25 @@ test "examples" {
         const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
 
         const example_output_path = "examples/parsed13.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const ast = try parse(allocator, content_input);
+        const pretty_output = try astToFlattenedString(allocator, ast);
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/lexed14.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/parsed14.txt";
         var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
         defer std.fs.File.close(file_output);
         const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
