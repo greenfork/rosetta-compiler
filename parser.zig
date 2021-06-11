@@ -452,17 +452,10 @@ pub fn main() !void {
     };
     defer file_handle.close();
     const input_content = try file_handle.readToEndAlloc(allocator, std.math.maxInt(usize));
-    printContent(input_content, "Input");
 
     const result: ?*Tree = try parse(allocator, input_content);
     const result_str = try astToFlattenedString(allocator, result);
-    printContent(result_str, "AST");
-}
-
-fn printContent(content: []const u8, title: []const u8) void {
-    p("==================== {s:<10} =====================\n\n", .{title});
-    p("{s}", .{content});
-    p("\n==================== File end =======================\n", .{});
+    _ = try std.io.getStdOut().write(result_str);
 }
 
 fn astToFlattenedString(allocator: *std.mem.Allocator, tree: ?*Tree) ![]const u8 {

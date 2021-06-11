@@ -378,13 +378,7 @@ pub fn main() !void {
 
     const tokens = try lex(allocator, input_content);
     const pretty_output = try tokenListToString(allocator, tokens);
-    printContent(pretty_output, "Result");
-}
-
-fn printContent(content: []u8, title: []const u8) void {
-    p("==================== {s:<10} =====================\n\n", .{title});
-    p("{s}", .{content});
-    p("\n==================== File end =======================\n", .{});
+    _ = try std.io.getStdOut().write(pretty_output);
 }
 
 fn tokenListToString(allocator: *std.mem.Allocator, token_list: std.ArrayList(Token)) ![]u8 {
