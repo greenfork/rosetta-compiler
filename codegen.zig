@@ -88,6 +88,62 @@ pub const Tree = struct {
     }
 };
 
+pub const Op = enum {
+    fetch,
+    store,
+    push,
+    add,
+    sub,
+    mul,
+    div,
+    mod,
+    lt,
+    gt,
+    le,
+    ge,
+    eq,
+    ne,
+    @"and",
+    @"or",
+    neg,
+    not,
+    jmp,
+    jq,
+    prtc,
+    prts,
+    prti,
+    halt,
+
+    const from_node = std.enums.directEnumArray(NodeType, ?Op, 0, .{
+        .unknown = null,
+        .identifier = null,
+        .string = null,
+        .integer = null,
+        .sequence = null,
+        .kw_if = null,
+        .prtc = null,
+        .prts = null,
+        .prti = null,
+        .kw_while = null,
+        .assign = null,
+        .negate = .neg,
+        .not = .not,
+        .multiply = .mul,
+        .divide = .div,
+        .mod = .mod,
+        .add = .add,
+        .subtract = .sub,
+        .less = .lt,
+        .less_equal = .le,
+        .greater = .gt,
+        .greater_equal = .ge,
+        .equal = .eq,
+        .not_equal = .ne,
+        .bool_and = .@"and",
+        .bool_or = .@"or",
+    });
+};
+
 pub const CodeGenerator = struct {
     allocator: *std.mem.Allocator,
     datasize: usize,
@@ -109,6 +165,8 @@ pub const CodeGenerator = struct {
 
     pub fn gen(self: *Self, ast: ?*Tree) ![]u8 {
         var result = std.ArrayList(u8).init(self.allocator);
+        var writer = result.writer();
+        _ = Op.from_node[@intCast(usize, @enumToInt(NodeType.negate))];
         _ = try result.writer().write("a");
         _ = try result.writer().write("\n");
         return result.items;
