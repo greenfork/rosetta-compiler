@@ -82,40 +82,40 @@ const NodeMetadata = struct {
     unary: bool,
     precedence: i8,
     node_type: NodeType,
-    node_str: []const u8,
+    token_str: []const u8,
 
     const self = [_]NodeMetadata{
-        .{ .token_type = .multiply, .right_associative = false, .binary = true, .unary = false, .precedence = 13, .node_type = .multiply, .node_str = "*" },
-        .{ .token_type = .divide, .right_associative = false, .binary = true, .unary = false, .precedence = 13, .node_type = .divide, .node_str = "/" },
-        .{ .token_type = .mod, .right_associative = false, .binary = true, .unary = false, .precedence = 13, .node_type = .mod, .node_str = "%" },
-        .{ .token_type = .add, .right_associative = false, .binary = true, .unary = false, .precedence = 12, .node_type = .add, .node_str = "+" },
-        .{ .token_type = .subtract, .right_associative = false, .binary = true, .unary = false, .precedence = 12, .node_type = .subtract, .node_str = "-" },
-        .{ .token_type = .negate, .right_associative = false, .binary = false, .unary = true, .precedence = 14, .node_type = .negate, .node_str = "-" },
-        .{ .token_type = .less, .right_associative = false, .binary = true, .unary = false, .precedence = 10, .node_type = .less, .node_str = "<" },
-        .{ .token_type = .less_equal, .right_associative = false, .binary = true, .unary = false, .precedence = 10, .node_type = .less_equal, .node_str = "<=" },
-        .{ .token_type = .greater, .right_associative = false, .binary = true, .unary = false, .precedence = 10, .node_type = .greater, .node_str = ">" },
-        .{ .token_type = .greater_equal, .right_associative = false, .binary = true, .unary = false, .precedence = 10, .node_type = .greater_equal, .node_str = ">=" },
-        .{ .token_type = .equal, .right_associative = false, .binary = true, .unary = false, .precedence = 9, .node_type = .equal, .node_str = "=" },
-        .{ .token_type = .not_equal, .right_associative = false, .binary = true, .unary = false, .precedence = 9, .node_type = .not_equal, .node_str = "!=" },
-        .{ .token_type = .not, .right_associative = false, .binary = false, .unary = true, .precedence = 14, .node_type = .not, .node_str = "!" },
-        .{ .token_type = .assign, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .assign, .node_str = "=" },
-        .{ .token_type = .bool_and, .right_associative = false, .binary = true, .unary = false, .precedence = 5, .node_type = .bool_and, .node_str = "&&" },
-        .{ .token_type = .bool_or, .right_associative = false, .binary = true, .unary = false, .precedence = 4, .node_type = .bool_or, .node_str = "||" },
-        .{ .token_type = .left_paren, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .node_str = "(" },
-        .{ .token_type = .right_paren, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .node_str = ")" },
-        .{ .token_type = .left_brace, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .node_str = "{" },
-        .{ .token_type = .right_brace, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .node_str = "}" },
-        .{ .token_type = .semicolon, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .node_str = ";" },
-        .{ .token_type = .comma, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .node_str = "," },
-        .{ .token_type = .kw_if, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .kw_if, .node_str = "if" },
-        .{ .token_type = .kw_else, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .node_str = "else" },
-        .{ .token_type = .kw_while, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .kw_while, .node_str = "while" },
-        .{ .token_type = .kw_print, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .node_str = "print" },
-        .{ .token_type = .kw_putc, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .node_str = "putc" },
-        .{ .token_type = .identifier, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .identifier, .node_str = "Identifier" },
-        .{ .token_type = .integer, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .integer, .node_str = "Integer literal" },
-        .{ .token_type = .string, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .string, .node_str = "String literal" },
-        .{ .token_type = .eof, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .node_str = "End of line" },
+        .{ .token_type = .multiply, .right_associative = false, .binary = true, .unary = false, .precedence = 13, .node_type = .multiply, .token_str = "*" },
+        .{ .token_type = .divide, .right_associative = false, .binary = true, .unary = false, .precedence = 13, .node_type = .divide, .token_str = "/" },
+        .{ .token_type = .mod, .right_associative = false, .binary = true, .unary = false, .precedence = 13, .node_type = .mod, .token_str = "%" },
+        .{ .token_type = .add, .right_associative = false, .binary = true, .unary = false, .precedence = 12, .node_type = .add, .token_str = "+" },
+        .{ .token_type = .subtract, .right_associative = false, .binary = true, .unary = false, .precedence = 12, .node_type = .subtract, .token_str = "-" },
+        .{ .token_type = .negate, .right_associative = false, .binary = false, .unary = true, .precedence = 14, .node_type = .negate, .token_str = "-" },
+        .{ .token_type = .less, .right_associative = false, .binary = true, .unary = false, .precedence = 10, .node_type = .less, .token_str = "<" },
+        .{ .token_type = .less_equal, .right_associative = false, .binary = true, .unary = false, .precedence = 10, .node_type = .less_equal, .token_str = "<=" },
+        .{ .token_type = .greater, .right_associative = false, .binary = true, .unary = false, .precedence = 10, .node_type = .greater, .token_str = ">" },
+        .{ .token_type = .greater_equal, .right_associative = false, .binary = true, .unary = false, .precedence = 10, .node_type = .greater_equal, .token_str = ">=" },
+        .{ .token_type = .equal, .right_associative = false, .binary = true, .unary = false, .precedence = 9, .node_type = .equal, .token_str = "=" },
+        .{ .token_type = .not_equal, .right_associative = false, .binary = true, .unary = false, .precedence = 9, .node_type = .not_equal, .token_str = "!=" },
+        .{ .token_type = .not, .right_associative = false, .binary = false, .unary = true, .precedence = 14, .node_type = .not, .token_str = "!" },
+        .{ .token_type = .assign, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .assign, .token_str = "=" },
+        .{ .token_type = .bool_and, .right_associative = false, .binary = true, .unary = false, .precedence = 5, .node_type = .bool_and, .token_str = "&&" },
+        .{ .token_type = .bool_or, .right_associative = false, .binary = true, .unary = false, .precedence = 4, .node_type = .bool_or, .token_str = "||" },
+        .{ .token_type = .left_paren, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .token_str = "(" },
+        .{ .token_type = .right_paren, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .token_str = ")" },
+        .{ .token_type = .left_brace, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .token_str = "{" },
+        .{ .token_type = .right_brace, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .token_str = "}" },
+        .{ .token_type = .semicolon, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .token_str = ";" },
+        .{ .token_type = .comma, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .token_str = "," },
+        .{ .token_type = .kw_if, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .kw_if, .token_str = "if" },
+        .{ .token_type = .kw_else, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .token_str = "else" },
+        .{ .token_type = .kw_while, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .kw_while, .token_str = "while" },
+        .{ .token_type = .kw_print, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .token_str = "print" },
+        .{ .token_type = .kw_putc, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .token_str = "putc" },
+        .{ .token_type = .identifier, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .identifier, .token_str = "Identifier" },
+        .{ .token_type = .integer, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .integer, .token_str = "Integer literal" },
+        .{ .token_type = .string, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .string, .token_str = "String literal" },
+        .{ .token_type = .eof, .right_associative = false, .binary = false, .unary = false, .precedence = -1, .node_type = .unknown, .token_str = "End of line" },
     };
 
     pub fn find(token_type: TokenType) NodeMetadata {
@@ -341,9 +341,9 @@ pub const Parser = struct {
                 result = try self.makeNode(.assign, identifer, expr);
                 try self.expect(.semicolon);
             },
+            .semicolon => try self.next(),
             else => {
                 p("\nSTMT: UNKNOWN {}\n", .{self.curr});
-                p("{}\n", .{result});
                 std.os.exit(1);
             },
         }
@@ -379,7 +379,6 @@ pub const Parser = struct {
             },
             else => {
                 p("\nEXPR: UNKNOWN {}\n", .{self.curr});
-                p("{}\n", .{result});
                 std.os.exit(1);
             },
         }
@@ -418,8 +417,8 @@ pub const Parser = struct {
 
     fn expect(self: *Self, token_type: TokenType) ParserError!void {
         if (self.curr.typ != token_type) {
-            const expected_str = NodeMetadata.find(token_type).node_str;
-            const found_str = NodeMetadata.find(self.curr.typ).node_str;
+            const expected_str = NodeMetadata.find(token_type).token_str;
+            const found_str = NodeMetadata.find(self.curr.typ).token_str;
             std.debug.print(
                 "({d}, {d}) error: Expecting '{s}', found '{s}'\n",
                 .{ self.curr.line, self.curr.col, expected_str, found_str },
