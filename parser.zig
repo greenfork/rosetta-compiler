@@ -567,7 +567,6 @@ test "stringToTokenList" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     var allocator = &arena.allocator;
-    var tokens = std.ArrayList(Token).init(allocator);
     const str: []const u8 = "\"Hello, World!\\n\"";
     const tok_array = [6]Token{
         Token{ .line = 4, .col = 1, .typ = .kw_print },
