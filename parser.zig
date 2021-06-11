@@ -304,7 +304,22 @@ pub const Parser = struct {
             .kw_while => {
                 try self.next();
                 const expr = try self.parseParenExpr();
-                return try self.makeNode(.kw_while, expr, try self.parseStmt());
+                result = try self.makeNode(.kw_while, expr, try self.parseStmt());
+            },
+            .kw_if => {
+                try self.next();
+                const expr = try self.parseParenExpr();
+                const stmt = try self.parseStmt();
+                const else_stmt = blk: {
+                    if (self.curr.typ == .kw_else) {
+                        try self.next();
+                        break :blk try self.parseStmt();
+                    } else {
+                        break :blk null;
+                    }
+                };
+                const else_node = try self.makeNode(.kw_if, stmt, else_stmt);
+                result = try self.makeNode(.kw_if, expr, else_node);
             },
             .left_brace => {
                 try self.next();
@@ -341,6 +356,16 @@ pub const Parser = struct {
                 const metadata = NodeMetadata.find(.negate);
                 const expr = try self.parseExpr(metadata.precedence);
                 result = try self.makeNode(.negate, expr, null);
+            },
+            .not => {
+                try self.next();
+                const metadata = NodeMetadata.find(.not);
+                const expr = try self.parseExpr(metadata.precedence);
+                result = try self.makeNode(.not, expr, null);
+            },
+            .add => {
+                try self.next();
+                result = try self.parseExpr(precedence);
             },
             .integer, .identifier => |typ| {
                 const node_type = NodeMetadata.find(typ).node_type;
@@ -719,6 +744,25 @@ test "examples" {
         const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
 
         const example_output_path = "examples/parsed6.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        const ast = try parse(allocator, content_input);
+        const pretty_output = try astToFlattenedString(allocator, ast);
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/lexed7.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/parsed7.txt";
         var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
         defer std.fs.File.close(file_output);
         const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
