@@ -88,17 +88,41 @@ pub const Tree = struct {
     }
 };
 
+pub const ASTInterpreterError = error{OutOfMemory};
+
 pub const ASTInterpreter = struct {
     output: std.ArrayList(u8),
+    writer: std.ArrayList(u8).Writer,
 
     const Self = @This();
 
     pub fn init(allocator: *std.mem.Allocator) Self {
-        return ASTInterpreter{ .output = std.ArrayList(u8).init(allocator) };
+        var output = std.ArrayList(u8).init(allocator);
+        return ASTInterpreter{ .output = output, .writer = output.writer() };
     }
 
-    pub fn interp(self: *Self, tree: *Tree) ![]u8 {
-        return self.output.items;
+    pub fn interp(self: *Self, tree: ?*Tree) ASTInterpreterError!?NodeValue {
+        if (tree) |t| {
+            switch (t.typ) {
+                .sequence => {
+                    _ = try self.interp(t.left);
+                    _ = try self.interp(t.right);
+                },
+                .prts => _ = try self.interp(t.left),
+                .string => try self.out(t.value.?.string),
+                else => {
+                    p("\nINTERP: UNKNOWN {}\n", .{t});
+                    std.os.exit(1);
+                },
+            }
+        }
+
+        return null;
+    }
+
+    pub fn out(self: *Self, str: []const u8) ASTInterpreterError!void {
+        p("{s}", .{str});
+        // try self.writer.writeAll(str);
     }
 };
 
@@ -123,9 +147,10 @@ pub fn main() !void {
     p("=========\n\n{s}\n=========\n", .{input_content});
     p("\n\n", .{});
 
-    const ast = (try loadAST(allocator, input_content)).?;
+    const ast = try loadAST(allocator, input_content);
     var ast_interpreter = ASTInterpreter.init(allocator);
-    const result: []const u8 = try ast_interpreter.interp(ast);
+    _ = try ast_interpreter.interp(ast);
+    const result: []const u8 = ast_interpreter.output.items;
     p("=========\n\n", .{});
     _ = try std.io.getStdOut().write(result);
     p("\n=========\n", .{});
@@ -145,12 +170,21 @@ fn loadASTHelper(allocator: *std.mem.Allocator, line_it: *std.mem.SplitIterator)
         if (tok_str[0] == ';') return null;
 
         const node_type = NodeType.fromString(tok_str);
+        const pre_iteration_index = tok_it.index;
 
         if (tok_it.next()) |leaf_value| {
-            const node_value = switch (node_type) {
-                .identifier, .string => NodeValue{ .string = leaf_value },
-                .integer => NodeValue{ .integer = try std.fmt.parseInt(i64, leaf_value, 10) },
-                else => unreachable,
+            const node_value = blk: {
+                switch (node_type) {
+                    .integer => break :blk NodeValue{ .integer = try std.fmt.parseInt(i64, leaf_value, 10) },
+                    .identifier => break :blk NodeValue{ .string = leaf_value },
+                    .string => {
+                        tok_it.index = pre_iteration_index;
+                        const str = tok_it.rest();
+                        const string_literal = str;
+                        break :blk NodeValue{ .string = string_literal };
+                    },
+                    else => unreachable,
+                }
             };
             return try Tree.makeLeaf(allocator, node_type, node_value);
         }
