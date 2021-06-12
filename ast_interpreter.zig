@@ -312,26 +312,6 @@ fn loadASTHelper(
     }
 }
 
-fn squishSpaces(allocator: *std.mem.Allocator, str: []const u8) ![]u8 {
-    var result = std.ArrayList(u8).init(allocator);
-    var was_space = false;
-    for (str) |ch| {
-        switch (ch) {
-            ' ' => {
-                if (!was_space) {
-                    was_space = true;
-                    try result.append(ch);
-                }
-            },
-            else => {
-                was_space = false;
-                try result.append(ch);
-            },
-        }
-    }
-    return result.items;
-}
-
 test "examples" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -354,9 +334,7 @@ test "examples" {
         _ = try ast_interpreter.interp(ast);
         const pretty_output: []const u8 = ast_interpreter.output.items;
 
-        const stripped_expected = try squishSpaces(allocator, content_output);
-        const stripped_result = try squishSpaces(allocator, pretty_output);
-        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
     }
 
     {
@@ -376,9 +354,7 @@ test "examples" {
         _ = try ast_interpreter.interp(ast);
         const pretty_output: []const u8 = ast_interpreter.output.items;
 
-        const stripped_expected = try squishSpaces(allocator, content_output);
-        const stripped_result = try squishSpaces(allocator, pretty_output);
-        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
     }
 
     {
@@ -398,9 +374,7 @@ test "examples" {
         _ = try ast_interpreter.interp(ast);
         const pretty_output: []const u8 = ast_interpreter.output.items;
 
-        const stripped_expected = try squishSpaces(allocator, content_output);
-        const stripped_result = try squishSpaces(allocator, pretty_output);
-        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
     }
 
     {
@@ -420,9 +394,7 @@ test "examples" {
         _ = try ast_interpreter.interp(ast);
         const pretty_output: []const u8 = ast_interpreter.output.items;
 
-        const stripped_expected = try squishSpaces(allocator, content_output);
-        const stripped_result = try squishSpaces(allocator, pretty_output);
-        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
     }
 
     {
@@ -442,9 +414,7 @@ test "examples" {
         _ = try ast_interpreter.interp(ast);
         const pretty_output: []const u8 = ast_interpreter.output.items;
 
-        const stripped_expected = try squishSpaces(allocator, content_output);
-        const stripped_result = try squishSpaces(allocator, pretty_output);
-        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
     }
 
     {
@@ -464,9 +434,7 @@ test "examples" {
         _ = try ast_interpreter.interp(ast);
         const pretty_output: []const u8 = ast_interpreter.output.items;
 
-        const stripped_expected = try squishSpaces(allocator, content_output);
-        const stripped_result = try squishSpaces(allocator, pretty_output);
-        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
     }
 
     {
@@ -486,9 +454,7 @@ test "examples" {
         _ = try ast_interpreter.interp(ast);
         const pretty_output: []const u8 = ast_interpreter.output.items;
 
-        const stripped_expected = try squishSpaces(allocator, content_output);
-        const stripped_result = try squishSpaces(allocator, pretty_output);
-        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
     }
 
     {
@@ -508,9 +474,7 @@ test "examples" {
         _ = try ast_interpreter.interp(ast);
         const pretty_output: []const u8 = ast_interpreter.output.items;
 
-        const stripped_expected = try squishSpaces(allocator, content_output);
-        const stripped_result = try squishSpaces(allocator, pretty_output);
-        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
     }
 
     {
@@ -530,9 +494,7 @@ test "examples" {
         _ = try ast_interpreter.interp(ast);
         const pretty_output: []const u8 = ast_interpreter.output.items;
 
-        const stripped_expected = try squishSpaces(allocator, content_output);
-        const stripped_result = try squishSpaces(allocator, pretty_output);
-        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
     }
 
     {
@@ -552,9 +514,7 @@ test "examples" {
         _ = try ast_interpreter.interp(ast);
         const pretty_output: []const u8 = ast_interpreter.output.items;
 
-        const stripped_expected = try squishSpaces(allocator, content_output);
-        const stripped_result = try squishSpaces(allocator, pretty_output);
-        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
     }
 
     {
@@ -574,9 +534,7 @@ test "examples" {
         _ = try ast_interpreter.interp(ast);
         const pretty_output: []const u8 = ast_interpreter.output.items;
 
-        const stripped_expected = try squishSpaces(allocator, content_output);
-        const stripped_result = try squishSpaces(allocator, pretty_output);
-        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
     }
 
     {
@@ -596,9 +554,7 @@ test "examples" {
         _ = try ast_interpreter.interp(ast);
         const pretty_output: []const u8 = ast_interpreter.output.items;
 
-        const stripped_expected = try squishSpaces(allocator, content_output);
-        const stripped_result = try squishSpaces(allocator, pretty_output);
-        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
     }
 
     {
@@ -618,9 +574,7 @@ test "examples" {
         _ = try ast_interpreter.interp(ast);
         const pretty_output: []const u8 = ast_interpreter.output.items;
 
-        const stripped_expected = try squishSpaces(allocator, content_output);
-        const stripped_result = try squishSpaces(allocator, pretty_output);
-        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
     }
 
     {
@@ -640,8 +594,6 @@ test "examples" {
         _ = try ast_interpreter.interp(ast);
         const pretty_output: []const u8 = ast_interpreter.output.items;
 
-        const stripped_expected = try squishSpaces(allocator, content_output);
-        const stripped_result = try squishSpaces(allocator, pretty_output);
-        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
     }
 }
