@@ -476,4 +476,27 @@ test "examples" {
         const stripped_result = try squishSpaces(allocator, pretty_output);
         try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
     }
+
+    {
+        const example_input_path = "examples/parsed3.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/codegened3.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList([]const u8).init(allocator);
+        const ast = try loadAST(allocator, content_input, &string_pool, &globals);
+        var code_generator = CodeGenerator.init(allocator, string_pool, globals);
+        try code_generator.gen(ast);
+        const pretty_output: []const u8 = try code_generator.print();
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
 }
