@@ -56,7 +56,7 @@ pub const ASTInterpreter = struct {
                 .negate => return NodeValue{ .integer = -(try self.interp(t.left)).?.integer },
                 .not => {
                     const arg = (try self.interp(t.left)).?.integer;
-                    const result: i64 = if (arg == 0) 1 else 0;
+                    const result: i32 = if (arg == 0) 1 else 0;
                     return NodeValue{ .integer = result };
                 },
                 .prts => _ = try self.out("{s}", .{(try self.interp(t.left)).?.string}),
@@ -80,53 +80,53 @@ pub const ASTInterpreter = struct {
 
     fn binOp(
         self: *Self,
-        func: fn (a: i64, b: i64) i64,
+        func: fn (a: i32, b: i32) i32,
         a: ?*Tree,
         b: ?*Tree,
-    ) ASTInterpreterError!i64 {
+    ) ASTInterpreterError!i32 {
         return func(
             (try self.interp(a)).?.integer,
             (try self.interp(b)).?.integer,
         );
     }
 
-    fn less(a: i64, b: i64) i64 {
+    fn less(a: i32, b: i32) i32 {
         return @boolToInt(a < b);
     }
-    fn less_equal(a: i64, b: i64) i64 {
+    fn less_equal(a: i32, b: i32) i32 {
         return @boolToInt(a <= b);
     }
-    fn greater(a: i64, b: i64) i64 {
+    fn greater(a: i32, b: i32) i32 {
         return @boolToInt(a > b);
     }
-    fn greater_equal(a: i64, b: i64) i64 {
+    fn greater_equal(a: i32, b: i32) i32 {
         return @boolToInt(a >= b);
     }
-    fn equal(a: i64, b: i64) i64 {
+    fn equal(a: i32, b: i32) i32 {
         return @boolToInt(a == b);
     }
-    fn not_equal(a: i64, b: i64) i64 {
+    fn not_equal(a: i32, b: i32) i32 {
         return @boolToInt(a != b);
     }
-    fn add(a: i64, b: i64) i64 {
+    fn add(a: i32, b: i32) i32 {
         return a + b;
     }
-    fn sub(a: i64, b: i64) i64 {
+    fn sub(a: i32, b: i32) i32 {
         return a - b;
     }
-    fn mul(a: i64, b: i64) i64 {
+    fn mul(a: i32, b: i32) i32 {
         return a * b;
     }
-    fn div(a: i64, b: i64) i64 {
+    fn div(a: i32, b: i32) i32 {
         return @divTrunc(a, b);
     }
-    fn mod(a: i64, b: i64) i64 {
+    fn mod(a: i32, b: i32) i32 {
         return @mod(a, b);
     }
-    fn @"or"(a: i64, b: i64) i64 {
+    fn @"or"(a: i32, b: i32) i32 {
         return @boolToInt((a != 0) or (b != 0));
     }
-    fn @"and"(a: i64, b: i64) i64 {
+    fn @"and"(a: i32, b: i32) i32 {
         return @boolToInt((a != 0) and (b != 0));
     }
 };
@@ -221,7 +221,7 @@ pub const NodeType = enum {
 };
 
 pub const NodeValue = union(enum) {
-    integer: i64,
+    integer: i32,
     string: []const u8,
 };
 
@@ -271,7 +271,7 @@ fn loadASTHelper(
         if (tok_it.next()) |leaf_value| {
             const node_value = blk: {
                 switch (node_type) {
-                    .integer => break :blk NodeValue{ .integer = try std.fmt.parseInt(i64, leaf_value, 10) },
+                    .integer => break :blk NodeValue{ .integer = try std.fmt.parseInt(i32, leaf_value, 10) },
                     .identifier => break :blk NodeValue{ .string = leaf_value },
                     .string => {
                         tok_it.index = pre_iteration_index;

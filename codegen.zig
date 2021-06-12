@@ -198,7 +198,7 @@ pub const NodeType = enum {
 };
 
 pub const NodeValue = union(enum) {
-    integer: i64,
+    integer: i32,
     string: []const u8,
 };
 
@@ -248,7 +248,7 @@ fn loadASTHelper(
         if (tok_it.next()) |leaf_value| {
             const node_value = blk: {
                 switch (node_type) {
-                    .integer => break :blk NodeValue{ .integer = try std.fmt.parseInt(i64, leaf_value, 10) },
+                    .integer => break :blk NodeValue{ .integer = try std.fmt.parseInt(i32, leaf_value, 10) },
                     .identifier => break :blk NodeValue{ .string = leaf_value },
                     .string => {
                         tok_it.index = pre_iteration_index;

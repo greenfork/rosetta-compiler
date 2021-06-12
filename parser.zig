@@ -2,7 +2,7 @@ const std = @import("std");
 
 pub const NodeValue = union(enum) {
     identifier: []const u8,
-    integer: i64,
+    integer: i32,
     string: []const u8,
 
     fn fromToken(token: Token) ?NodeValue {
@@ -448,7 +448,7 @@ pub const TokenType = enum {
 
 pub const TokenValue = union(enum) {
     identifier: []const u8,
-    integer: i64,
+    integer: i32,
     string: []const u8,
 };
 
@@ -538,7 +538,7 @@ pub const LexerOutputTokenizer = struct {
                             tokens_it.index = pre_value_index;
                             break :blk TokenValue{ .string = tokens_it.rest() };
                         },
-                        .integer => break :blk TokenValue{ .integer = try std.fmt.parseInt(i64, val, 10) },
+                        .integer => break :blk TokenValue{ .integer = try std.fmt.parseInt(i32, val, 10) },
                         .identifier => break :blk TokenValue{ .identifier = val },
                         else => unreachable,
                     }

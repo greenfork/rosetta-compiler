@@ -74,8 +74,8 @@ pub const TokenType = enum {
 
 pub const TokenValue = union(enum) {
     ident: []const u8,
-    intlit: i64,
-    intchar: i64,
+    intlit: i32,
+    intchar: i32,
     string: []const u8,
 };
 
@@ -278,7 +278,7 @@ pub const Lexer = struct {
         }
         const final_offset = self.offset + 1;
         result.value = TokenValue{
-            .intlit = std.fmt.parseInt(i64, self.content[init_offset..final_offset], 10) catch {
+            .intlit = std.fmt.parseInt(i32, self.content[init_offset..final_offset], 10) catch {
                 return LexerError.InvalidNumber;
             },
         };
