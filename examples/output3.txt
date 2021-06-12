@@ -1,0 +1,5 @@
+42
+Hello World
+Good Bye
+ok
+Print a slash n - \n.
