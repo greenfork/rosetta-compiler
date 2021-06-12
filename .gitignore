@@ -18,6 +18,6 @@
 *.pdb
 *.wasm
 
-lexical_analyzer
-test_lexical_analyzer
+!Makefile
+
 /zig-cache
