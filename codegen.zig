@@ -221,12 +221,19 @@ fn loadASTHelper(allocator: *std.mem.Allocator, line_it: *std.mem.SplitIterator)
         if (tok_str[0] == ';') return null;
 
         const node_type = NodeType.fromString(tok_str);
+        const pre_iteration_index = tok_it.index;
 
         if (tok_it.next()) |leaf_value| {
-            const node_value = switch (node_type) {
-                .identifier, .string => NodeValue{ .string = leaf_value },
-                .integer => NodeValue{ .integer = try std.fmt.parseInt(i64, leaf_value, 10) },
-                else => unreachable,
+            const node_value = blk: {
+                switch (node_type) {
+                    .integer => break :blk NodeValue{ .integer = try std.fmt.parseInt(i64, leaf_value, 10) },
+                    .identifier => break :blk NodeValue{ .string = leaf_value },
+                    .string => {
+                        tok_it.index = pre_iteration_index;
+                        break :blk NodeValue{ .string = tok_it.rest() };
+                    },
+                    else => unreachable,
+                }
             };
             return try Tree.makeLeaf(allocator, node_type, node_value);
         }
