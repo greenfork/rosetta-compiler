@@ -1,7 +1,7 @@
 const std = @import("std");
 const p = std.debug.print;
 
-pub const Op = enum {
+pub const Op = enum(u8) {
     fetch,
     store,
     push,
@@ -61,14 +61,16 @@ pub const Op = enum {
     }
 };
 
+pub const CodeGeneratorError = error{OutOfMemory};
+
 pub const CodeGenerator = struct {
     allocator: *std.mem.Allocator,
     string_pool: std.ArrayList([]const u8),
     globals: std.ArrayList([]const u8),
-    sp: usize,
-    pc: usize,
+    bytecode: std.ArrayList(u8),
 
     const Self = @This();
+    const word_size = @sizeOf(i32);
 
     pub fn init(
         allocator: *std.mem.Allocator,
@@ -79,12 +81,65 @@ pub const CodeGenerator = struct {
             .allocator = allocator,
             .string_pool = string_pool,
             .globals = globals,
-            .sp = 0,
-            .pc = 0,
+            .bytecode = std.ArrayList(u8).init(allocator),
         };
     }
 
-    pub fn gen(self: *Self, ast: ?*Tree) ![]u8 {
+    pub fn gen(self: *Self, ast: ?*Tree) CodeGeneratorError!void {
+        try self.genH(ast);
+        try self.emitHalt();
+    }
+
+    pub fn genH(self: *Self, ast: ?*Tree) CodeGeneratorError!void {
+        if (ast) |t| {
+            switch (t.typ) {
+                .sequence => {
+                    try self.genH(t.left);
+                    try self.genH(t.right);
+                },
+                .prts => {
+                    try self.genH(t.left);
+                    try self.emitByte(.prts);
+                },
+                .string => {
+                    try self.emitByte(.push);
+                    try self.emitInt(self.fetchStringOffset(t.value.?.string));
+                },
+                else => {
+                    std.debug.print("\nINTERP: UNKNOWN {}\n", .{t.typ});
+                    std.os.exit(1);
+                },
+            }
+        }
+    }
+
+    fn emitByte(self: *Self, op: Op) CodeGeneratorError!void {
+        try self.bytecode.append(@enumToInt(op));
+    }
+
+    fn emitInt(self: *Self, n: i32) CodeGeneratorError!void {
+        // p("emitInt: {d}\n", .{n});
+        var n_var = n;
+        var n_bytes = @ptrCast(*[4]u8, &n_var);
+        for (n_bytes) |byte| {
+            try self.bytecode.append(byte);
+        }
+    }
+
+    fn emitHalt(self: *Self) CodeGeneratorError!void {
+        try self.bytecode.append(@enumToInt(Op.halt));
+    }
+
+    fn fetchStringOffset(self: Self, str: []const u8) i32 {
+        for (self.string_pool.items) |string, idx| {
+            if (std.mem.eql(u8, string, str)) {
+                return @intCast(i32, idx);
+            }
+        }
+        unreachable;
+    }
+
+    pub fn print(self: Self) ![]u8 {
         var result = std.ArrayList(u8).init(self.allocator);
         var writer = result.writer();
         try writer.print(
@@ -94,7 +149,27 @@ pub const CodeGenerator = struct {
         for (self.string_pool.items) |string| {
             try writer.print("{s}\n", .{string});
         }
-        try writer.writeAll("\n");
+
+        var pc: usize = 0;
+        while (pc < self.bytecode.items.len) : (pc += 1) {
+            try writer.print("{d:>5} ", .{pc});
+            switch (@intToEnum(Op, self.bytecode.items[pc])) {
+                .push => {
+                    const arg_ptr = @ptrCast(*[4]u8, self.bytecode.items[pc + 1 .. pc + 1 + word_size]);
+                    var arg_array = arg_ptr.*;
+                    const arg = @ptrCast(*i32, @alignCast(@alignOf(i32), &arg_array));
+                    try writer.print("push  {d}\n", .{arg.*});
+                    pc += word_size;
+                },
+                .prts => try writer.writeAll("prts\n"),
+                .halt => try writer.writeAll("halt\n"),
+                else => |en| {
+                    std.debug.print("\nPRINT: UNKNOWN {} at pc {d}\n", .{ en, pc });
+                    std.os.exit(1);
+                },
+            }
+        }
+
         return result.items;
     }
 };
@@ -124,7 +199,8 @@ pub fn main() !void {
     var globals = std.ArrayList([]const u8).init(allocator);
     const ast = try loadAST(allocator, input_content, &string_pool, &globals);
     var code_generator = CodeGenerator.init(allocator, string_pool, globals);
-    const result: []const u8 = try code_generator.gen(ast);
+    try code_generator.gen(ast);
+    const result: []const u8 = try code_generator.print();
     p("=========\n\n", .{});
     _ = try std.io.getStdOut().write(result);
     p("\n=========\n", .{});
@@ -305,3 +381,32 @@ fn squishSpaces(allocator: *std.mem.Allocator, str: []const u8) ![]u8 {
 }
 
 const testing = std.testing;
+
+test "examples" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var allocator = &arena.allocator;
+
+    {
+        const example_input_path = "examples/parsed0.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/codegened0.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList([]const u8).init(allocator);
+        const ast = try loadAST(allocator, content_input, &string_pool, &globals);
+        var code_generator = CodeGenerator.init(allocator, string_pool, globals);
+        try code_generator.gen(ast);
+        const pretty_output: []const u8 = try code_generator.print();
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+}
