@@ -97,13 +97,34 @@ pub const CodeGenerator = struct {
                     try self.genH(t.left);
                     try self.genH(t.right);
                 },
+                .assign => {
+                    try self.genH(t.right);
+                    try self.emitByte(.store);
+                    try self.emitInt(self.fetchGlobalOffset(t.left.?.value.?.string));
+                },
                 .prts => {
                     try self.genH(t.left);
                     try self.emitByte(.prts);
                 },
+                .prti => {
+                    try self.genH(t.left);
+                    try self.emitByte(.prti);
+                },
+                .prtc => {
+                    try self.genH(t.left);
+                    try self.emitByte(.prtc);
+                },
                 .string => {
                     try self.emitByte(.push);
                     try self.emitInt(self.fetchStringOffset(t.value.?.string));
+                },
+                .integer => {
+                    try self.emitByte(.push);
+                    try self.emitInt(t.value.?.integer);
+                },
+                .identifier => {
+                    try self.emitByte(.fetch);
+                    try self.emitInt(self.fetchGlobalOffset(t.value.?.string));
                 },
                 else => {
                     std.debug.print("\nINTERP: UNKNOWN {}\n", .{t.typ});
@@ -139,6 +160,15 @@ pub const CodeGenerator = struct {
         unreachable;
     }
 
+    fn fetchGlobalOffset(self: Self, str: []const u8) i32 {
+        for (self.globals.items) |global, idx| {
+            if (std.mem.eql(u8, global, str)) {
+                return @intCast(i32, idx);
+            }
+        }
+        unreachable;
+    }
+
     pub fn print(self: Self) ![]u8 {
         var result = std.ArrayList(u8).init(self.allocator);
         var writer = result.writer();
@@ -155,13 +185,20 @@ pub const CodeGenerator = struct {
             try writer.print("{d:>5} ", .{pc});
             switch (@intToEnum(Op, self.bytecode.items[pc])) {
                 .push => {
-                    const arg_ptr = @ptrCast(*[4]u8, self.bytecode.items[pc + 1 .. pc + 1 + word_size]);
-                    var arg_array = arg_ptr.*;
-                    const arg = @ptrCast(*i32, @alignCast(@alignOf(i32), &arg_array));
-                    try writer.print("push  {d}\n", .{arg.*});
+                    try writer.print("push  {d}\n", .{self.unpackInt(pc + 1)});
+                    pc += word_size;
+                },
+                .store => {
+                    try writer.print("store [{d}]\n", .{self.unpackInt(pc + 1)});
+                    pc += word_size;
+                },
+                .fetch => {
+                    try writer.print("fetch [{d}]\n", .{self.unpackInt(pc + 1)});
                     pc += word_size;
                 },
                 .prts => try writer.writeAll("prts\n"),
+                .prti => try writer.writeAll("prti\n"),
+                .prtc => try writer.writeAll("prtc\n"),
                 .halt => try writer.writeAll("halt\n"),
                 else => |en| {
                     std.debug.print("\nPRINT: UNKNOWN {} at pc {d}\n", .{ en, pc });
@@ -171,6 +208,13 @@ pub const CodeGenerator = struct {
         }
 
         return result.items;
+    }
+
+    fn unpackInt(self: Self, pc: usize) i32 {
+        const arg_ptr = @ptrCast(*[4]u8, self.bytecode.items[pc .. pc + word_size]);
+        var arg_array = arg_ptr.*;
+        const arg = @ptrCast(*i32, @alignCast(@alignOf(i32), &arg_array));
+        return arg.*;
     }
 };
 
@@ -394,6 +438,29 @@ test "examples" {
         const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
 
         const example_output_path = "examples/codegened0.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList([]const u8).init(allocator);
+        const ast = try loadAST(allocator, content_input, &string_pool, &globals);
+        var code_generator = CodeGenerator.init(allocator, string_pool, globals);
+        try code_generator.gen(ast);
+        const pretty_output: []const u8 = try code_generator.print();
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/parsed1.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/codegened1.txt";
         var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
         defer std.fs.File.close(file_output);
         const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
