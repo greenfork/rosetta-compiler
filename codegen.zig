@@ -59,18 +59,22 @@ pub const Op = enum {
 
 pub const CodeGenerator = struct {
     allocator: *std.mem.Allocator,
-    data: std.ArrayList(u8),
     string_pool: std.ArrayList([]const u8),
+    globals: std.ArrayList([]const u8),
     sp: usize,
     pc: usize,
 
     const Self = @This();
 
-    pub fn init(allocator: *std.mem.Allocator, string_pool: std.ArrayList([]const u8)) Self {
+    pub fn init(
+        allocator: *std.mem.Allocator,
+        string_pool: std.ArrayList([]const u8),
+        globals: std.ArrayList([]const u8),
+    ) Self {
         return CodeGenerator{
             .allocator = allocator,
-            .data = std.ArrayList(u8).init(allocator),
             .string_pool = string_pool,
+            .globals = globals,
             .sp = 0,
             .pc = 0,
         };
@@ -81,7 +85,7 @@ pub const CodeGenerator = struct {
         var writer = result.writer();
         try writer.print(
             "Datasize: {d} Strings: {d}\n",
-            .{ self.data.items.len, self.string_pool.items.len },
+            .{ self.globals.items.len, self.string_pool.items.len },
         );
         for (self.string_pool.items) |string| {
             var printed_string = std.ArrayList(u8).init(self.allocator);
@@ -98,7 +102,7 @@ pub const CodeGenerator = struct {
                     else => try printed_string.append(ch),
                 }
             }
-            try writer.print("\"{s}\"", .{printed_string.items});
+            try writer.print("\"{s}\"\n", .{printed_string.items});
         }
         try writer.writeAll("\n");
         return result.items;
@@ -127,8 +131,9 @@ pub fn main() !void {
     p("\n\n", .{});
 
     var string_pool = std.ArrayList([]const u8).init(allocator);
-    const ast = try loadAST(allocator, input_content, &string_pool);
-    var code_generator = CodeGenerator.init(allocator, string_pool);
+    var globals = std.ArrayList([]const u8).init(allocator);
+    const ast = try loadAST(allocator, input_content, &string_pool, &globals);
+    var code_generator = CodeGenerator.init(allocator, string_pool, globals);
     const result: []const u8 = try code_generator.gen(ast);
     p("=========\n\n", .{});
     _ = try std.io.getStdOut().write(result);
@@ -227,15 +232,17 @@ fn loadAST(
     allocator: *std.mem.Allocator,
     str: []const u8,
     string_pool: *std.ArrayList([]const u8),
+    globals: *std.ArrayList([]const u8),
 ) LoadASTError!?*Tree {
     var line_it = std.mem.split(str, "\n");
-    return try loadASTHelper(allocator, &line_it, string_pool);
+    return try loadASTHelper(allocator, &line_it, string_pool, globals);
 }
 
 fn loadASTHelper(
     allocator: *std.mem.Allocator,
     line_it: *std.mem.SplitIterator,
     string_pool: *std.ArrayList([]const u8),
+    globals: *std.ArrayList([]const u8),
 ) LoadASTError!?*Tree {
     if (line_it.next()) |line| {
         var tok_it = std.mem.tokenize(line, " ");
@@ -249,7 +256,17 @@ fn loadASTHelper(
             const node_value = blk: {
                 switch (node_type) {
                     .integer => break :blk NodeValue{ .integer = try std.fmt.parseInt(i32, leaf_value, 10) },
-                    .identifier => break :blk NodeValue{ .string = leaf_value },
+                    .identifier => {
+                        var already_exists = false;
+                        for (globals.items) |global| {
+                            if (std.mem.eql(u8, global, leaf_value)) {
+                                already_exists = true;
+                                break;
+                            }
+                        }
+                        if (!already_exists) try globals.append(leaf_value);
+                        break :blk NodeValue{ .string = leaf_value };
+                    },
                     .string => {
                         tok_it.index = pre_iteration_index;
                         const str = tok_it.rest();
@@ -271,7 +288,14 @@ fn loadASTHelper(
                                 }
                             }
                         }
-                        try string_pool.append(string_literal.items);
+                        var already_exists = false;
+                        for (string_pool.items) |string| {
+                            if (std.mem.eql(u8, string, string_literal.items)) {
+                                already_exists = true;
+                                break;
+                            }
+                        }
+                        if (!already_exists) try string_pool.append(string_literal.items);
                         break :blk NodeValue{ .string = string_literal.items };
                     },
                     else => unreachable,
@@ -280,8 +304,8 @@ fn loadASTHelper(
             return try Tree.makeLeaf(allocator, node_type, node_value);
         }
 
-        const left = try loadASTHelper(allocator, line_it, string_pool);
-        const right = try loadASTHelper(allocator, line_it, string_pool);
+        const left = try loadASTHelper(allocator, line_it, string_pool, globals);
+        const right = try loadASTHelper(allocator, line_it, string_pool, globals);
         return try Tree.makeNode(allocator, node_type, left, right);
     } else {
         return null;
