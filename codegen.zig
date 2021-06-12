@@ -55,6 +55,10 @@ pub const Op = enum {
         .bool_and = .@"and",
         .bool_or = .@"or",
     });
+
+    pub fn fromNodeType(node_type: NodeType) ?Op {
+        return from_node[node_type];
+    }
 };
 
 pub const CodeGenerator = struct {
@@ -88,21 +92,7 @@ pub const CodeGenerator = struct {
             .{ self.globals.items.len, self.string_pool.items.len },
         );
         for (self.string_pool.items) |string| {
-            var printed_string = std.ArrayList(u8).init(self.allocator);
-            for (string) |ch| {
-                switch (ch) {
-                    '\n' => {
-                        try printed_string.append('\\');
-                        try printed_string.append('n');
-                    },
-                    '\\' => {
-                        try printed_string.append('\\');
-                        try printed_string.append('\\');
-                    },
-                    else => try printed_string.append(ch),
-                }
-            }
-            try writer.print("\"{s}\"\n", .{printed_string.items});
+            try writer.print("{s}\n", .{string});
         }
         try writer.writeAll("\n");
         return result.items;
@@ -270,33 +260,15 @@ fn loadASTHelper(
                     .string => {
                         tok_it.index = pre_iteration_index;
                         const str = tok_it.rest();
-                        var string_literal = try std.ArrayList(u8).initCapacity(allocator, str.len);
-                        var escaped = false;
-                        // Truncate double quotes
-                        for (str[1 .. str.len - 1]) |ch| {
-                            if (escaped) {
-                                escaped = false;
-                                switch (ch) {
-                                    'n' => try string_literal.append('\n'),
-                                    '\\' => try string_literal.append('\\'),
-                                    else => unreachable,
-                                }
-                            } else {
-                                switch (ch) {
-                                    '\\' => escaped = true,
-                                    else => try string_literal.append(ch),
-                                }
-                            }
-                        }
                         var already_exists = false;
                         for (string_pool.items) |string| {
-                            if (std.mem.eql(u8, string, string_literal.items)) {
+                            if (std.mem.eql(u8, string, str)) {
                                 already_exists = true;
                                 break;
                             }
                         }
-                        if (!already_exists) try string_pool.append(string_literal.items);
-                        break :blk NodeValue{ .string = string_literal.items };
+                        if (!already_exists) try string_pool.append(str);
+                        break :blk NodeValue{ .string = str };
                     },
                     else => unreachable,
                 }
