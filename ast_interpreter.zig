@@ -92,13 +92,11 @@ pub const ASTInterpreterError = error{OutOfMemory};
 
 pub const ASTInterpreter = struct {
     output: std.ArrayList(u8),
-    writer: std.ArrayList(u8).Writer,
 
     const Self = @This();
 
     pub fn init(allocator: *std.mem.Allocator) Self {
-        var output = std.ArrayList(u8).init(allocator);
-        return ASTInterpreter{ .output = output, .writer = output.writer() };
+        return ASTInterpreter{ .output = std.ArrayList(u8).init(allocator) };
     }
 
     pub fn interp(self: *Self, tree: ?*Tree) ASTInterpreterError!?NodeValue {
@@ -121,8 +119,7 @@ pub const ASTInterpreter = struct {
     }
 
     pub fn out(self: *Self, str: []const u8) ASTInterpreterError!void {
-        p("{s}", .{str});
-        // try self.writer.writeAll(str);
+        try self.output.writer().writeAll(str);
     }
 };
 
@@ -241,4 +238,32 @@ fn squishSpaces(allocator: *std.mem.Allocator, str: []const u8) ![]u8 {
         }
     }
     return result.items;
+}
+
+test "examples" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var allocator = &arena.allocator;
+
+    {
+        const example_input_path = "examples/parsed0.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output0.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        const ast = try loadAST(allocator, content_input, &string_pool);
+        var ast_interpreter = ASTInterpreter.init(allocator);
+        _ = try ast_interpreter.interp(ast);
+        const pretty_output: []const u8 = ast_interpreter.output.items;
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
 }
