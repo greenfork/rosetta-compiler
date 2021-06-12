@@ -1,92 +1,4 @@
 const std = @import("std");
-const testing = std.testing;
-const p = std.debug.print;
-
-pub const NodeType = enum {
-    unknown,
-    identifier,
-    string,
-    integer,
-    sequence,
-    kw_if,
-    prtc,
-    prts,
-    prti,
-    kw_while,
-    assign,
-    negate,
-    not,
-    multiply,
-    divide,
-    mod,
-    add,
-    subtract,
-    less,
-    less_equal,
-    greater,
-    greater_equal,
-    equal,
-    not_equal,
-    bool_and,
-    bool_or,
-
-    const from_string_map = std.ComptimeStringMap(NodeType, .{
-        .{ "UNKNOWN", .unknown },
-        .{ "Identifier", .identifier },
-        .{ "String", .string },
-        .{ "Integer", .integer },
-        .{ "Sequence", .sequence },
-        .{ "If", .kw_if },
-        .{ "Prtc", .prtc },
-        .{ "Prts", .prts },
-        .{ "Prti", .prti },
-        .{ "While", .kw_while },
-        .{ "Assign", .assign },
-        .{ "Negate", .negate },
-        .{ "Not", .not },
-        .{ "Multiply", .multiply },
-        .{ "Divide", .divide },
-        .{ "Mod", .mod },
-        .{ "Add", .add },
-        .{ "Subtract", .subtract },
-        .{ "Less", .less },
-        .{ "LessEqual", .less_equal },
-        .{ "Greater", .greater },
-        .{ "GreaterEqual", .greater_equal },
-        .{ "Equal", .equal },
-        .{ "NotEqual", .not_equal },
-        .{ "And", .bool_and },
-        .{ "Or", .bool_or },
-    });
-
-    pub fn fromString(str: []const u8) NodeType {
-        return from_string_map.get(str).?;
-    }
-};
-
-pub const NodeValue = union(enum) {
-    integer: i64,
-    string: []const u8,
-};
-
-pub const Tree = struct {
-    left: ?*Tree,
-    right: ?*Tree,
-    typ: NodeType = .unknown,
-    value: ?NodeValue = null,
-
-    fn makeNode(allocator: *std.mem.Allocator, typ: NodeType, left: ?*Tree, right: ?*Tree) !*Tree {
-        const result = try allocator.create(Tree);
-        result.* = Tree{ .left = left, .right = right, .typ = typ };
-        return result;
-    }
-
-    fn makeLeaf(allocator: *std.mem.Allocator, typ: NodeType, value: ?NodeValue) !*Tree {
-        const result = try allocator.create(Tree);
-        result.* = Tree{ .left = null, .right = null, .typ = typ, .value = value };
-        return result;
-    }
-};
 
 pub const ASTInterpreterError = error{OutOfMemory};
 
@@ -152,8 +64,8 @@ pub const ASTInterpreter = struct {
                 .prtc => _ = try self.out("{c}", .{@intCast(u8, (try self.interp(t.left)).?.integer)}),
                 .string => return t.value,
                 .integer => return t.value,
-                else => {
-                    p("\nINTERP: UNKNOWN {}\n", .{t.typ});
+                .unknown => {
+                    std.debug.print("\nINTERP: UNKNOWN {}\n", .{t});
                     std.os.exit(1);
                 },
             }
@@ -246,6 +158,92 @@ pub fn main() !void {
     _ = try std.io.getStdOut().write(result);
 }
 
+pub const NodeType = enum {
+    unknown,
+    identifier,
+    string,
+    integer,
+    sequence,
+    kw_if,
+    prtc,
+    prts,
+    prti,
+    kw_while,
+    assign,
+    negate,
+    not,
+    multiply,
+    divide,
+    mod,
+    add,
+    subtract,
+    less,
+    less_equal,
+    greater,
+    greater_equal,
+    equal,
+    not_equal,
+    bool_and,
+    bool_or,
+
+    const from_string_map = std.ComptimeStringMap(NodeType, .{
+        .{ "UNKNOWN", .unknown },
+        .{ "Identifier", .identifier },
+        .{ "String", .string },
+        .{ "Integer", .integer },
+        .{ "Sequence", .sequence },
+        .{ "If", .kw_if },
+        .{ "Prtc", .prtc },
+        .{ "Prts", .prts },
+        .{ "Prti", .prti },
+        .{ "While", .kw_while },
+        .{ "Assign", .assign },
+        .{ "Negate", .negate },
+        .{ "Not", .not },
+        .{ "Multiply", .multiply },
+        .{ "Divide", .divide },
+        .{ "Mod", .mod },
+        .{ "Add", .add },
+        .{ "Subtract", .subtract },
+        .{ "Less", .less },
+        .{ "LessEqual", .less_equal },
+        .{ "Greater", .greater },
+        .{ "GreaterEqual", .greater_equal },
+        .{ "Equal", .equal },
+        .{ "NotEqual", .not_equal },
+        .{ "And", .bool_and },
+        .{ "Or", .bool_or },
+    });
+
+    pub fn fromString(str: []const u8) NodeType {
+        return from_string_map.get(str).?;
+    }
+};
+
+pub const NodeValue = union(enum) {
+    integer: i64,
+    string: []const u8,
+};
+
+pub const Tree = struct {
+    left: ?*Tree,
+    right: ?*Tree,
+    typ: NodeType = .unknown,
+    value: ?NodeValue = null,
+
+    fn makeNode(allocator: *std.mem.Allocator, typ: NodeType, left: ?*Tree, right: ?*Tree) !*Tree {
+        const result = try allocator.create(Tree);
+        result.* = Tree{ .left = left, .right = right, .typ = typ };
+        return result;
+    }
+
+    fn makeLeaf(allocator: *std.mem.Allocator, typ: NodeType, value: ?NodeValue) !*Tree {
+        const result = try allocator.create(Tree);
+        result.* = Tree{ .left = null, .right = null, .typ = typ, .value = value };
+        return result;
+    }
+};
+
 const LoadASTError = error{OutOfMemory} || std.fmt.ParseIntError;
 
 fn loadAST(
@@ -280,6 +278,7 @@ fn loadASTHelper(
                         const str = tok_it.rest();
                         var string_literal = try std.ArrayList(u8).initCapacity(allocator, str.len);
                         var escaped = false;
+                        // Truncate double quotes
                         for (str[1 .. str.len - 1]) |ch| {
                             if (escaped) {
                                 escaped = false;
@@ -311,6 +310,8 @@ fn loadASTHelper(
         return null;
     }
 }
+
+const testing = std.testing;
 
 test "examples" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);

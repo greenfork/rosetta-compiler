@@ -1,7 +1,4 @@
 const std = @import("std");
-const fmt = std.fmt;
-const testing = std.testing;
-const p = std.debug.print;
 
 pub const TokenType = enum {
     unknown,
@@ -389,33 +386,35 @@ fn tokenListToString(allocator: *std.mem.Allocator, token_list: std.ArrayList(To
         if (token.value) |value| {
             const init_fmt = "{d:>5}{d:>7} {s:<15}";
             switch (value) {
-                .string => |str| _ = try w.write(try fmt.allocPrint(
+                .string => |str| _ = try w.write(try std.fmt.allocPrint(
                     allocator,
                     init_fmt ++ "{s}\n",
                     common_args ++ .{str},
                 )),
-                .ident => |ident| _ = try w.write(try fmt.allocPrint(
+                .ident => |ident| _ = try w.write(try std.fmt.allocPrint(
                     allocator,
                     init_fmt ++ "{s}\n",
                     common_args ++ .{ident},
                 )),
-                .intlit => |i| _ = try w.write(try fmt.allocPrint(
+                .intlit => |i| _ = try w.write(try std.fmt.allocPrint(
                     allocator,
                     init_fmt ++ "{d}\n",
                     common_args ++ .{i},
                 )),
-                .intchar => |ch| _ = try w.write(try fmt.allocPrint(
+                .intchar => |ch| _ = try w.write(try std.fmt.allocPrint(
                     allocator,
                     init_fmt ++ "{d}\n",
                     common_args ++ .{ch},
                 )),
             }
         } else {
-            _ = try w.write(try fmt.allocPrint(allocator, "{d:>5}{d:>7} {s}\n", common_args));
+            _ = try w.write(try std.fmt.allocPrint(allocator, "{d:>5}{d:>7} {s}\n", common_args));
         }
     }
     return result.items;
 }
+
+const testing = std.testing;
 
 test "tokenListToString" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
