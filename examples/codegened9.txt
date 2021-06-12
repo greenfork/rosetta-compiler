@@ -1,0 +1,23 @@
+Datasize: 3 Strings: 0
+    0 push  12
+    5 store [0]
+   10 push  1
+   15 store [1]
+   20 push  1
+   25 store [2]
+   30 fetch [2]
+   35 fetch [0]
+   40 le
+   41 jz     (41) 83
+   46 fetch [1]
+   51 fetch [2]
+   56 mul
+   57 store [1]
+   62 fetch [2]
+   67 push  1
+   72 add
+   73 store [2]
+   78 jmp    (-49) 30
+   83 fetch [1]
+   88 prti
+   89 halt

@@ -1,0 +1,62 @@
+Datasize: 0 Strings: 1
+"\n"
+   0 push  5
+   5 neg
+   6 neg
+   7 neg
+   8 neg
+   9 neg
+  10 neg
+  11 neg
+  12 neg
+  13 neg
+  14 neg
+  15 neg
+  16 neg
+  17 neg
+  18 neg
+  19 neg
+  20 neg
+  21 neg
+  22 neg
+  23 neg
+  24 neg
+  25 neg
+  26 neg
+  27 neg
+  28 neg
+  29 neg
+  30 neg
+  31 neg
+  32 neg
+  33 neg
+  34 neg
+  35 neg
+  36 neg
+  37 neg
+  38 prti
+  39 push  0
+  44 prts
+  45 push  3
+  50 push  2
+  55 add
+  56 push  2
+  61 mul
+  62 prti
+  63 push  0
+  68 prts
+  69 push  1
+  74 jz     (56) 131
+  79 push  1
+  84 jz     (46) 131
+  89 push  1
+  94 jz     (36) 131
+  99 push  1
+ 104 jz     (26) 131
+ 109 push  1
+ 114 jz     (16) 131
+ 119 push  15
+ 124 prti
+ 125 push  0
+ 130 prts
+ 131 halt

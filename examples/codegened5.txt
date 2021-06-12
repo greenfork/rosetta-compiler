@@ -1,0 +1,25 @@
+Datasize: 1 Strings: 2
+"door "
+" is open\n"
+    0 push  1
+    5 store [0]
+   10 fetch [0]
+   15 fetch [0]
+   20 mul
+   21 push  100
+   26 le
+   27 jz     (49) 77
+   32 push  0
+   37 prts
+   38 fetch [0]
+   43 fetch [0]
+   48 mul
+   49 prti
+   50 push  1
+   55 prts
+   56 fetch [0]
+   61 push  1
+   66 add
+   67 store [0]
+   72 jmp    (-63) 10
+   77 halt

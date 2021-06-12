@@ -1,0 +1,36 @@
+Datasize: 2 Strings: 1
+"\n"
+   0 push  1
+   5 neg
+   6 push  1
+  11 neg
+  12 push  5
+  17 push  15
+  22 mul
+  23 mul
+  24 push  10
+  29 div
+  30 mul
+  31 store [0]
+  36 fetch [0]
+  41 prti
+  42 push  0
+  47 prts
+  48 fetch [0]
+  53 neg
+  54 store [1]
+  59 fetch [1]
+  64 prti
+  65 push  0
+  70 prts
+  71 fetch [1]
+  76 neg
+  77 prti
+  78 push  0
+  83 prts
+  84 push  1
+  89 neg
+  90 prti
+  91 push  0
+  96 prts
+  97 halt

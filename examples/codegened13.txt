@@ -1,0 +1,61 @@
+Datasize: 5 Strings: 3
+" is prime\n"
+"Total primes found: "
+"\n"
+   0 push  1
+   5 store [0]
+  10 push  1
+  15 store [1]
+  20 push  100
+  25 store [2]
+  30 fetch [1]
+  35 fetch [2]
+  40 lt
+  41 jz     (160) 202
+  46 push  3
+  51 store [3]
+  56 push  1
+  61 store [4]
+  66 fetch [1]
+  71 push  2
+  76 add
+  77 store [1]
+  82 fetch [3]
+  87 fetch [3]
+  92 mul
+  93 fetch [1]
+  98 le
+  99 fetch [4]
+ 104 and
+ 105 jz     (53) 159
+ 110 fetch [1]
+ 115 fetch [3]
+ 120 div
+ 121 fetch [3]
+ 126 mul
+ 127 fetch [1]
+ 132 ne
+ 133 store [4]
+ 138 fetch [3]
+ 143 push  2
+ 148 add
+ 149 store [3]
+ 154 jmp    (-73) 82
+ 159 fetch [4]
+ 164 jz     (32) 197
+ 169 fetch [1]
+ 174 prti
+ 175 push  0
+ 180 prts
+ 181 fetch [0]
+ 186 push  1
+ 191 add
+ 192 store [0]
+ 197 jmp    (-168) 30
+ 202 push  1
+ 207 prts
+ 208 fetch [0]
+ 213 prti
+ 214 push  2
+ 219 prts
+ 220 halt

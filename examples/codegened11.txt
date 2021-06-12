@@ -1,0 +1,45 @@
+Datasize: 1 Strings: 4
+"FizzBuzz"
+"Fizz"
+"Buzz"
+"\n"
+    0 push  1
+    5 store [0]
+   10 fetch [0]
+   15 push  100
+   20 le
+   21 jz     (121) 143
+   26 fetch [0]
+   31 push  15
+   36 mod
+   37 not
+   38 jz     (15) 54
+   43 push  0
+   48 prts
+   49 jmp    (66) 116
+   54 fetch [0]
+   59 push  3
+   64 mod
+   65 not
+   66 jz     (15) 82
+   71 push  1
+   76 prts
+   77 jmp    (38) 116
+   82 fetch [0]
+   87 push  5
+   92 mod
+   93 not
+   94 jz     (15) 110
+   99 push  2
+  104 prts
+  105 jmp    (10) 116
+  110 fetch [0]
+  115 prti
+  116 push  3
+  121 prts
+  122 fetch [0]
+  127 push  1
+  132 add
+  133 store [0]
+  138 jmp    (-129) 10
+  143 halt

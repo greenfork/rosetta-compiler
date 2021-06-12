@@ -1,0 +1,32 @@
+Datasize: 5 Strings: 1
+"\n"
+    0 push  44
+    5 store [0]
+   10 push  1
+   15 store [1]
+   20 push  0
+   25 store [2]
+   30 push  1
+   35 store [3]
+   40 fetch [1]
+   45 fetch [0]
+   50 lt
+   51 jz     (61) 113
+   56 fetch [2]
+   61 fetch [3]
+   66 add
+   67 store [4]
+   72 fetch [3]
+   77 store [2]
+   82 fetch [4]
+   87 store [3]
+   92 fetch [1]
+   97 push  1
+  102 add
+  103 store [1]
+  108 jmp    (-69) 40
+  113 fetch [4]
+  118 prti
+  119 push  0
+  124 prts
+  125 halt

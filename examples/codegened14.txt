@@ -1,0 +1,105 @@
+Datasize: 15 Strings: 0
+    0 push  420
+    5 neg
+    6 store [0]
+   11 push  300
+   16 store [1]
+   21 push  300
+   26 store [2]
+   31 push  300
+   36 neg
+   37 store [3]
+   42 push  7
+   47 store [4]
+   52 push  15
+   57 store [5]
+   62 push  200
+   67 store [6]
+   72 fetch [2]
+   77 store [7]
+   82 fetch [7]
+   87 fetch [3]
+   92 gt
+   93 jz     (329) 423
+   98 fetch [0]
+  103 store [8]
+  108 fetch [8]
+  113 fetch [1]
+  118 lt
+  119 jz     (276) 396
+  124 push  0
+  129 store [9]
+  134 push  0
+  139 store [10]
+  144 push  32
+  149 store [11]
+  154 push  0
+  159 store [12]
+  164 fetch [12]
+  169 fetch [6]
+  174 lt
+  175 jz     (193) 369
+  180 fetch [10]
+  185 fetch [10]
+  190 mul
+  191 push  200
+  196 div
+  197 store [13]
+  202 fetch [9]
+  207 fetch [9]
+  212 mul
+  213 push  200
+  218 div
+  219 store [14]
+  224 fetch [13]
+  229 fetch [14]
+  234 add
+  235 push  800
+  240 gt
+  241 jz     (56) 298
+  246 push  48
+  251 fetch [12]
+  256 add
+  257 store [11]
+  262 fetch [12]
+  267 push  9
+  272 gt
+  273 jz     (14) 288
+  278 push  64
+  283 store [11]
+  288 fetch [6]
+  293 store [12]
+  298 fetch [10]
+  303 fetch [9]
+  308 mul
+  309 push  100
+  314 div
+  315 fetch [7]
+  320 add
+  321 store [9]
+  326 fetch [13]
+  331 fetch [14]
+  336 sub
+  337 fetch [8]
+  342 add
+  343 store [10]
+  348 fetch [12]
+  353 push  1
+  358 add
+  359 store [12]
+  364 jmp    (-201) 164
+  369 fetch [11]
+  374 prtc
+  375 fetch [8]
+  380 fetch [4]
+  385 add
+  386 store [8]
+  391 jmp    (-284) 108
+  396 push  10
+  401 prtc
+  402 fetch [7]
+  407 fetch [5]
+  412 sub
+  413 store [7]
+  418 jmp    (-337) 82
+  423 halt

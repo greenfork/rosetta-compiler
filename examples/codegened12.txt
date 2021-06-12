@@ -1,0 +1,31 @@
+Datasize: 1 Strings: 4
+" bottles of beer on the wall\n"
+" bottles of beer\n"
+"Take one down, pass it around\n"
+" bottles of beer on the wall\n\n"
+    0 push  99
+    5 store [0]
+   10 fetch [0]
+   15 push  0
+   20 gt
+   21 jz     (67) 89
+   26 fetch [0]
+   31 prti
+   32 push  0
+   37 prts
+   38 fetch [0]
+   43 prti
+   44 push  1
+   49 prts
+   50 push  2
+   55 prts
+   56 fetch [0]
+   61 push  1
+   66 sub
+   67 store [0]
+   72 fetch [0]
+   77 prti
+   78 push  3
+   83 prts
+   84 jmp    (-75) 10
+   89 halt
