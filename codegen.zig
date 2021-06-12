@@ -146,8 +146,8 @@ pub const Op = enum {
 
 pub const CodeGenerator = struct {
     allocator: *std.mem.Allocator,
-    datasize: usize,
-    strings: std.ArrayList([]const u8),
+    data: std.ArrayList(u8),
+    string_pool: std.ArrayList([]const u8),
     sp: usize,
     pc: usize,
 
@@ -156,8 +156,8 @@ pub const CodeGenerator = struct {
     pub fn init(allocator: *std.mem.Allocator) Self {
         return CodeGenerator{
             .allocator = allocator,
-            .datasize = 0,
-            .strings = std.ArrayList([]const u8).init(allocator),
+            .data = std.ArrayList(u8).init(allocator),
+            .string_pool = std.ArrayList([]const u8).init(allocator),
             .sp = 0,
             .pc = 0,
         };
@@ -166,9 +166,14 @@ pub const CodeGenerator = struct {
     pub fn gen(self: *Self, ast: ?*Tree) ![]u8 {
         var result = std.ArrayList(u8).init(self.allocator);
         var writer = result.writer();
-        _ = Op.from_node[@intCast(usize, @enumToInt(NodeType.negate))];
-        _ = try result.writer().write("a");
-        _ = try result.writer().write("\n");
+        try writer.print(
+            "Datasize: {d} Strings: {d}\n",
+            .{ self.data.items.len, self.string_pool.items.len },
+        );
+        for (self.string_pool.items) |string| {
+            try writer.print("{s}\n", .{string});
+        }
+        try writer.writeAll("\n");
         return result.items;
     }
 };
