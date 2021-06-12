@@ -147,7 +147,8 @@ pub fn main() !void {
     p("=========\n\n{s}\n=========\n", .{input_content});
     p("\n\n", .{});
 
-    const ast = try loadAST(allocator, input_content);
+    var string_pool = std.ArrayList([]const u8).init(allocator);
+    const ast = try loadAST(allocator, input_content, &string_pool);
     var ast_interpreter = ASTInterpreter.init(allocator);
     _ = try ast_interpreter.interp(ast);
     const result: []const u8 = ast_interpreter.output.items;
@@ -158,12 +159,20 @@ pub fn main() !void {
 
 const LoadASTError = error{OutOfMemory} || std.fmt.ParseIntError;
 
-fn loadAST(allocator: *std.mem.Allocator, str: []const u8) LoadASTError!?*Tree {
+fn loadAST(
+    allocator: *std.mem.Allocator,
+    str: []const u8,
+    string_pool: *std.ArrayList([]const u8),
+) LoadASTError!?*Tree {
     var line_it = std.mem.split(str, "\n");
-    return try loadASTHelper(allocator, &line_it);
+    return try loadASTHelper(allocator, &line_it, string_pool);
 }
 
-fn loadASTHelper(allocator: *std.mem.Allocator, line_it: *std.mem.SplitIterator) LoadASTError!?*Tree {
+fn loadASTHelper(
+    allocator: *std.mem.Allocator,
+    line_it: *std.mem.SplitIterator,
+    string_pool: *std.ArrayList([]const u8),
+) LoadASTError!?*Tree {
     if (line_it.next()) |line| {
         var tok_it = std.mem.tokenize(line, " ");
         const tok_str = tok_it.next().?;
@@ -180,8 +189,25 @@ fn loadASTHelper(allocator: *std.mem.Allocator, line_it: *std.mem.SplitIterator)
                     .string => {
                         tok_it.index = pre_iteration_index;
                         const str = tok_it.rest();
-                        const string_literal = str;
-                        break :blk NodeValue{ .string = string_literal };
+                        var string_literal = try std.ArrayList(u8).initCapacity(allocator, str.len);
+                        var escaped = false;
+                        for (str[1 .. str.len - 1]) |ch| {
+                            if (escaped) {
+                                escaped = false;
+                                switch (ch) {
+                                    'n' => try string_literal.append('\n'),
+                                    '\\' => try string_literal.append('\\'),
+                                    else => unreachable,
+                                }
+                            } else {
+                                switch (ch) {
+                                    '\\' => escaped = true,
+                                    else => try string_literal.append(ch),
+                                }
+                            }
+                        }
+                        try string_pool.append(string_literal.items);
+                        break :blk NodeValue{ .string = string_literal.items };
                     },
                     else => unreachable,
                 }
@@ -189,8 +215,8 @@ fn loadASTHelper(allocator: *std.mem.Allocator, line_it: *std.mem.SplitIterator)
             return try Tree.makeLeaf(allocator, node_type, node_value);
         }
 
-        const left = try loadASTHelper(allocator, line_it);
-        const right = try loadASTHelper(allocator, line_it);
+        const left = try loadASTHelper(allocator, line_it, string_pool);
+        const right = try loadASTHelper(allocator, line_it, string_pool);
         return try Tree.makeNode(allocator, node_type, left, right);
     } else {
         return null;
