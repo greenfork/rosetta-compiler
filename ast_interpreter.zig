@@ -115,8 +115,31 @@ pub const ASTInterpreter = struct {
                     (try self.interp(t.right)).?,
                 ),
                 .identifier => return self.globals.get(t.value.?.string).?,
+                .kw_while => {
+                    while ((try self.interp(t.left)).?.integer != 0) {
+                        _ = try self.interp(t.right);
+                    }
+                },
+                .less => return NodeValue{ .integer = try self.binOp(less, t.left, t.right) },
+                .less_equal => return NodeValue{ .integer = try self.binOp(less_equal, t.left, t.right) },
+                .greater => return NodeValue{ .integer = try self.binOp(greater, t.left, t.right) },
+                .greater_equal => return NodeValue{ .integer = try self.binOp(greater_equal, t.left, t.right) },
+                .add => return NodeValue{ .integer = try self.binOp(add, t.left, t.right) },
+                .subtract => return NodeValue{ .integer = try self.binOp(sub, t.left, t.right) },
+                .multiply => return NodeValue{ .integer = try self.binOp(mul, t.left, t.right) },
+                .divide => return NodeValue{ .integer = try self.binOp(div, t.left, t.right) },
+                .mod => return NodeValue{ .integer = try self.binOp(mod, t.left, t.right) },
+                .equal => return NodeValue{ .integer = try self.binOp(equal, t.left, t.right) },
+                .not_equal => return NodeValue{ .integer = try self.binOp(not_equal, t.left, t.right) },
+                .negate => return NodeValue{ .integer = -(try self.interp(t.left)).?.integer },
+                .not => {
+                    const arg = (try self.interp(t.left)).?.integer;
+                    const result: i64 = if (arg == 0) 1 else 0;
+                    return NodeValue{ .integer = result };
+                },
                 .prts => _ = try self.out("{s}", .{(try self.interp(t.left)).?.string}),
                 .prti => _ = try self.out("{d}", .{(try self.interp(t.left)).?.integer}),
+                .prtc => _ = try self.out("{c}", .{@intCast(u8, (try self.interp(t.left)).?.integer)}),
                 .string => return t.value,
                 .integer => return t.value,
                 else => {
@@ -131,6 +154,58 @@ pub const ASTInterpreter = struct {
 
     pub fn out(self: *Self, comptime format: []const u8, args: anytype) ASTInterpreterError!void {
         try self.output.writer().print(format, args);
+    }
+
+    fn binOp(
+        self: *Self,
+        func: fn (a: i64, b: i64) i64,
+        a: ?*Tree,
+        b: ?*Tree,
+    ) ASTInterpreterError!i64 {
+        return func(
+            (try self.interp(a)).?.integer,
+            (try self.interp(b)).?.integer,
+        );
+    }
+
+    fn less(a: i64, b: i64) i64 {
+        return @boolToInt(a < b);
+    }
+    fn less_equal(a: i64, b: i64) i64 {
+        return @boolToInt(a <= b);
+    }
+    fn greater(a: i64, b: i64) i64 {
+        return @boolToInt(a > b);
+    }
+    fn greater_equal(a: i64, b: i64) i64 {
+        return @boolToInt(a >= b);
+    }
+    fn equal(a: i64, b: i64) i64 {
+        return @boolToInt(a == b);
+    }
+    fn not_equal(a: i64, b: i64) i64 {
+        return @boolToInt(a != b);
+    }
+    fn add(a: i64, b: i64) i64 {
+        return a + b;
+    }
+    fn sub(a: i64, b: i64) i64 {
+        return a - b;
+    }
+    fn mul(a: i64, b: i64) i64 {
+        return a * b;
+    }
+    fn div(a: i64, b: i64) i64 {
+        return @divTrunc(a, b);
+    }
+    fn mod(a: i64, b: i64) i64 {
+        return @mod(a, b);
+    }
+    fn @"or"(a: i64, b: i64) i64 {
+        return (a != 0) or (b != 0);
+    }
+    fn @"and"(a: i64, b: i64) i64 {
+        return (a != 0) and (b != 0);
     }
 };
 
@@ -285,6 +360,94 @@ test "examples" {
         const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
 
         const example_output_path = "examples/output1.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        const ast = try loadAST(allocator, content_input, &string_pool);
+        var ast_interpreter = ASTInterpreter.init(allocator);
+        _ = try ast_interpreter.interp(ast);
+        const pretty_output: []const u8 = ast_interpreter.output.items;
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/parsed3.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output3.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        const ast = try loadAST(allocator, content_input, &string_pool);
+        var ast_interpreter = ASTInterpreter.init(allocator);
+        _ = try ast_interpreter.interp(ast);
+        const pretty_output: []const u8 = ast_interpreter.output.items;
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/parsed4.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output4.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        const ast = try loadAST(allocator, content_input, &string_pool);
+        var ast_interpreter = ASTInterpreter.init(allocator);
+        _ = try ast_interpreter.interp(ast);
+        const pretty_output: []const u8 = ast_interpreter.output.items;
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/parsed5.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output5.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        const ast = try loadAST(allocator, content_input, &string_pool);
+        var ast_interpreter = ASTInterpreter.init(allocator);
+        _ = try ast_interpreter.interp(ast);
+        const pretty_output: []const u8 = ast_interpreter.output.items;
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/parsed6.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output6.txt";
         var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
         defer std.fs.File.close(file_output);
         const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
