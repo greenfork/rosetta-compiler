@@ -1,6 +1,139 @@
 const std = @import("std");
-const testing = std.testing;
 const p = std.debug.print;
+
+pub const Op = enum {
+    fetch,
+    store,
+    push,
+    add,
+    sub,
+    mul,
+    div,
+    mod,
+    lt,
+    gt,
+    le,
+    ge,
+    eq,
+    ne,
+    @"and",
+    @"or",
+    neg,
+    not,
+    jmp,
+    jq,
+    prtc,
+    prts,
+    prti,
+    halt,
+
+    const from_node = std.enums.directEnumArray(NodeType, ?Op, 0, .{
+        .unknown = null,
+        .identifier = null,
+        .string = null,
+        .integer = null,
+        .sequence = null,
+        .kw_if = null,
+        .prtc = null,
+        .prts = null,
+        .prti = null,
+        .kw_while = null,
+        .assign = null,
+        .negate = .neg,
+        .not = .not,
+        .multiply = .mul,
+        .divide = .div,
+        .mod = .mod,
+        .add = .add,
+        .subtract = .sub,
+        .less = .lt,
+        .less_equal = .le,
+        .greater = .gt,
+        .greater_equal = .ge,
+        .equal = .eq,
+        .not_equal = .ne,
+        .bool_and = .@"and",
+        .bool_or = .@"or",
+    });
+};
+
+pub const CodeGenerator = struct {
+    allocator: *std.mem.Allocator,
+    data: std.ArrayList(u8),
+    string_pool: std.ArrayList([]const u8),
+    sp: usize,
+    pc: usize,
+
+    const Self = @This();
+
+    pub fn init(allocator: *std.mem.Allocator, string_pool: std.ArrayList([]const u8)) Self {
+        return CodeGenerator{
+            .allocator = allocator,
+            .data = std.ArrayList(u8).init(allocator),
+            .string_pool = string_pool,
+            .sp = 0,
+            .pc = 0,
+        };
+    }
+
+    pub fn gen(self: *Self, ast: ?*Tree) ![]u8 {
+        var result = std.ArrayList(u8).init(self.allocator);
+        var writer = result.writer();
+        try writer.print(
+            "Datasize: {d} Strings: {d}\n",
+            .{ self.data.items.len, self.string_pool.items.len },
+        );
+        for (self.string_pool.items) |string| {
+            var printed_string = std.ArrayList(u8).init(self.allocator);
+            for (string) |ch| {
+                switch (ch) {
+                    '\n' => {
+                        try printed_string.append('\\');
+                        try printed_string.append('n');
+                    },
+                    '\\' => {
+                        try printed_string.append('\\');
+                        try printed_string.append('\\');
+                    },
+                    else => try printed_string.append(ch),
+                }
+            }
+            try writer.print("\"{s}\"", .{printed_string.items});
+        }
+        try writer.writeAll("\n");
+        return result.items;
+    }
+};
+
+pub fn main() !void {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var allocator = &arena.allocator;
+
+    var arg_it = std.process.args();
+    _ = try arg_it.next(allocator) orelse unreachable; // program name
+    const file_name = arg_it.next(allocator);
+    var file_handle = blk: {
+        if (file_name) |file_name_delimited| {
+            const fname: []const u8 = try file_name_delimited;
+            break :blk try std.fs.cwd().openFile(fname, .{});
+        } else {
+            break :blk std.io.getStdIn();
+        }
+    };
+    defer file_handle.close();
+    const input_content = try file_handle.readToEndAlloc(allocator, std.math.maxInt(usize));
+    p("=========\n\n{s}\n=========\n", .{input_content});
+    p("\n\n", .{});
+
+    var string_pool = std.ArrayList([]const u8).init(allocator);
+    const ast = try loadAST(allocator, input_content, &string_pool);
+    var code_generator = CodeGenerator.init(allocator, string_pool);
+    const result: []const u8 = try code_generator.gen(ast);
+    p("=========\n\n", .{});
+    _ = try std.io.getStdOut().write(result);
+    p("\n=========\n", .{});
+}
 
 pub const NodeType = enum {
     unknown,
@@ -88,133 +221,22 @@ pub const Tree = struct {
     }
 };
 
-pub const Op = enum {
-    fetch,
-    store,
-    push,
-    add,
-    sub,
-    mul,
-    div,
-    mod,
-    lt,
-    gt,
-    le,
-    ge,
-    eq,
-    ne,
-    @"and",
-    @"or",
-    neg,
-    not,
-    jmp,
-    jq,
-    prtc,
-    prts,
-    prti,
-    halt,
-
-    const from_node = std.enums.directEnumArray(NodeType, ?Op, 0, .{
-        .unknown = null,
-        .identifier = null,
-        .string = null,
-        .integer = null,
-        .sequence = null,
-        .kw_if = null,
-        .prtc = null,
-        .prts = null,
-        .prti = null,
-        .kw_while = null,
-        .assign = null,
-        .negate = .neg,
-        .not = .not,
-        .multiply = .mul,
-        .divide = .div,
-        .mod = .mod,
-        .add = .add,
-        .subtract = .sub,
-        .less = .lt,
-        .less_equal = .le,
-        .greater = .gt,
-        .greater_equal = .ge,
-        .equal = .eq,
-        .not_equal = .ne,
-        .bool_and = .@"and",
-        .bool_or = .@"or",
-    });
-};
-
-pub const CodeGenerator = struct {
-    allocator: *std.mem.Allocator,
-    data: std.ArrayList(u8),
-    string_pool: std.ArrayList([]const u8),
-    sp: usize,
-    pc: usize,
-
-    const Self = @This();
-
-    pub fn init(allocator: *std.mem.Allocator) Self {
-        return CodeGenerator{
-            .allocator = allocator,
-            .data = std.ArrayList(u8).init(allocator),
-            .string_pool = std.ArrayList([]const u8).init(allocator),
-            .sp = 0,
-            .pc = 0,
-        };
-    }
-
-    pub fn gen(self: *Self, ast: ?*Tree) ![]u8 {
-        var result = std.ArrayList(u8).init(self.allocator);
-        var writer = result.writer();
-        try writer.print(
-            "Datasize: {d} Strings: {d}\n",
-            .{ self.data.items.len, self.string_pool.items.len },
-        );
-        for (self.string_pool.items) |string| {
-            try writer.print("{s}\n", .{string});
-        }
-        try writer.writeAll("\n");
-        return result.items;
-    }
-};
-
-pub fn main() !void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    var allocator = &arena.allocator;
-
-    var arg_it = std.process.args();
-    _ = try arg_it.next(allocator) orelse unreachable; // program name
-    const file_name = arg_it.next(allocator);
-    var file_handle = blk: {
-        if (file_name) |file_name_delimited| {
-            const fname: []const u8 = try file_name_delimited;
-            break :blk try std.fs.cwd().openFile(fname, .{});
-        } else {
-            break :blk std.io.getStdIn();
-        }
-    };
-    defer file_handle.close();
-    const input_content = try file_handle.readToEndAlloc(allocator, std.math.maxInt(usize));
-    p("=========\n\n{s}\n=========\n", .{input_content});
-    p("\n\n", .{});
-
-    const ast = try loadAST(allocator, input_content);
-    var code_generator = CodeGenerator.init(allocator);
-    const result: []const u8 = try code_generator.gen(ast);
-    p("=========\n\n", .{});
-    _ = try std.io.getStdOut().write(result);
-    p("\n=========\n", .{});
-}
-
 const LoadASTError = error{OutOfMemory} || std.fmt.ParseIntError;
 
-fn loadAST(allocator: *std.mem.Allocator, str: []const u8) LoadASTError!?*Tree {
+fn loadAST(
+    allocator: *std.mem.Allocator,
+    str: []const u8,
+    string_pool: *std.ArrayList([]const u8),
+) LoadASTError!?*Tree {
     var line_it = std.mem.split(str, "\n");
-    return try loadASTHelper(allocator, &line_it);
+    return try loadASTHelper(allocator, &line_it, string_pool);
 }
 
-fn loadASTHelper(allocator: *std.mem.Allocator, line_it: *std.mem.SplitIterator) LoadASTError!?*Tree {
+fn loadASTHelper(
+    allocator: *std.mem.Allocator,
+    line_it: *std.mem.SplitIterator,
+    string_pool: *std.ArrayList([]const u8),
+) LoadASTError!?*Tree {
     if (line_it.next()) |line| {
         var tok_it = std.mem.tokenize(line, " ");
         const tok_str = tok_it.next().?;
@@ -230,7 +252,27 @@ fn loadASTHelper(allocator: *std.mem.Allocator, line_it: *std.mem.SplitIterator)
                     .identifier => break :blk NodeValue{ .string = leaf_value },
                     .string => {
                         tok_it.index = pre_iteration_index;
-                        break :blk NodeValue{ .string = tok_it.rest() };
+                        const str = tok_it.rest();
+                        var string_literal = try std.ArrayList(u8).initCapacity(allocator, str.len);
+                        var escaped = false;
+                        // Truncate double quotes
+                        for (str[1 .. str.len - 1]) |ch| {
+                            if (escaped) {
+                                escaped = false;
+                                switch (ch) {
+                                    'n' => try string_literal.append('\n'),
+                                    '\\' => try string_literal.append('\\'),
+                                    else => unreachable,
+                                }
+                            } else {
+                                switch (ch) {
+                                    '\\' => escaped = true,
+                                    else => try string_literal.append(ch),
+                                }
+                            }
+                        }
+                        try string_pool.append(string_literal.items);
+                        break :blk NodeValue{ .string = string_literal.items };
                     },
                     else => unreachable,
                 }
@@ -238,8 +280,8 @@ fn loadASTHelper(allocator: *std.mem.Allocator, line_it: *std.mem.SplitIterator)
             return try Tree.makeLeaf(allocator, node_type, node_value);
         }
 
-        const left = try loadASTHelper(allocator, line_it);
-        const right = try loadASTHelper(allocator, line_it);
+        const left = try loadASTHelper(allocator, line_it, string_pool);
+        const right = try loadASTHelper(allocator, line_it, string_pool);
         return try Tree.makeNode(allocator, node_type, left, right);
     } else {
         return null;
@@ -265,3 +307,5 @@ fn squishSpaces(allocator: *std.mem.Allocator, str: []const u8) ![]u8 {
     }
     return result.items;
 }
+
+const testing = std.testing;
