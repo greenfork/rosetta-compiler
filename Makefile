@@ -8,4 +8,4 @@ testzig:
 testnim:
 	nim r test_lexical_analyzer.nim
 
-.PHONY: all
+.PHONY: testall testzig testnim
