@@ -92,11 +92,15 @@ pub const ASTInterpreterError = error{OutOfMemory};
 
 pub const ASTInterpreter = struct {
     output: std.ArrayList(u8),
+    globals: std.StringHashMap(NodeValue),
 
     const Self = @This();
 
     pub fn init(allocator: *std.mem.Allocator) Self {
-        return ASTInterpreter{ .output = std.ArrayList(u8).init(allocator) };
+        return ASTInterpreter{
+            .output = std.ArrayList(u8).init(allocator),
+            .globals = std.StringHashMap(NodeValue).init(allocator),
+        };
     }
 
     pub fn interp(self: *Self, tree: ?*Tree) ASTInterpreterError!?NodeValue {
@@ -106,10 +110,17 @@ pub const ASTInterpreter = struct {
                     _ = try self.interp(t.left);
                     _ = try self.interp(t.right);
                 },
-                .prts => _ = try self.interp(t.left),
-                .string => try self.out(t.value.?.string),
+                .assign => try self.globals.put(
+                    t.left.?.value.?.string,
+                    (try self.interp(t.right)).?,
+                ),
+                .identifier => return self.globals.get(t.value.?.string).?,
+                .prts => _ = try self.out("{s}", .{(try self.interp(t.left)).?.string}),
+                .prti => _ = try self.out("{d}", .{(try self.interp(t.left)).?.integer}),
+                .string => return t.value,
+                .integer => return t.value,
                 else => {
-                    p("\nINTERP: UNKNOWN {}\n", .{t});
+                    p("\nINTERP: UNKNOWN {}\n", .{t.typ});
                     std.os.exit(1);
                 },
             }
@@ -118,8 +129,8 @@ pub const ASTInterpreter = struct {
         return null;
     }
 
-    pub fn out(self: *Self, str: []const u8) ASTInterpreterError!void {
-        try self.output.writer().writeAll(str);
+    pub fn out(self: *Self, comptime format: []const u8, args: anytype) ASTInterpreterError!void {
+        try self.output.writer().print(format, args);
     }
 };
 
@@ -252,6 +263,28 @@ test "examples" {
         const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
 
         const example_output_path = "examples/output0.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        const ast = try loadAST(allocator, content_input, &string_pool);
+        var ast_interpreter = ASTInterpreter.init(allocator);
+        _ = try ast_interpreter.interp(ast);
+        const pretty_output: []const u8 = ast_interpreter.output.items;
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/parsed1.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output1.txt";
         var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
         defer std.fs.File.close(file_output);
         const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
