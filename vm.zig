@@ -37,17 +37,15 @@ pub const VirtualMachine = struct {
 
     pub fn interp(self: *Self) VirtualMachineError!void {
         while (true) : (self.pc += 1) {
-            // p("while pc: {d}\n", .{self.pc});
+            // p("pc: {d}\n", .{self.pc});
+            // p("sp: {d}, val: {d}\n", .{ self.sp, self.stack[self.sp] });
             switch (@intToEnum(Op, self.program.items[self.pc])) {
-                .push => {
-                    self.push(self.unpackInt());
-                },
-                .prts => {
-                    const popped = self.pop();
-                    // p("popped: {d}\n", .{popped});
-                    const str = self.string_pool.items[@intCast(usize, popped)];
-                    try self.out(str);
-                },
+                .push => self.push(self.unpackInt()),
+                .store => self.globals.items[@intCast(usize, self.unpackInt())] = self.pop(),
+                .fetch => self.push(self.globals.items[@intCast(usize, self.unpackInt())]),
+                .prts => try self.out("{s}", .{self.string_pool.items[@intCast(usize, self.pop())]}),
+                .prti => try self.out("{d}", .{self.pop()}),
+                .prtc => try self.out("{c}", .{@intCast(u8, self.pop())}),
                 .halt => break,
                 else => {
                     std.debug.print("\nINTERP: unknown {}\n", .{@intToEnum(Op, self.program.items[self.pc])});
@@ -82,8 +80,8 @@ pub const VirtualMachine = struct {
         return arg.*;
     }
 
-    pub fn out(self: *Self, str: []const u8) VirtualMachineError!void {
-        try self.output.writer().writeAll(str);
+    pub fn out(self: *Self, comptime format: []const u8, args: anytype) VirtualMachineError!void {
+        try self.output.writer().print(format, args);
     }
 };
 
@@ -197,8 +195,8 @@ fn loadBytecode(
     const strings_index = std.mem.indexOf(u8, first_line, " Strings: ").?;
     const globals_size = try std.fmt.parseInt(usize, first_line["Datasize: ".len..strings_index], 10);
     const string_pool_size = try std.fmt.parseInt(usize, first_line[strings_index + " Strings: ".len ..], 10);
-    try globals.ensureTotalCapacity(globals_size);
-    try string_pool.ensureTotalCapacity(string_pool_size);
+    try globals.resize(globals_size);
+    try string_pool.ensureCapacity(string_pool_size);
     var string_cnt: usize = 0;
     while (string_cnt < string_pool_size) : (string_cnt += 1) {
         const line = line_it.next().?;
@@ -250,8 +248,8 @@ fn loadBytecode(
                 insertInt(&result, address + 1, try std.fmt.parseInt(i32, tok_it.rest(), 10));
             },
             .jmp, .jz => {
-                p("not impl\n", .{});
-                std.os.exit(1);
+                _ = tok_it.next();
+                insertInt(&result, address + 1, try std.fmt.parseInt(i32, tok_it.rest(), 10));
             },
             else => {},
         }
@@ -266,5 +264,55 @@ fn insertInt(array: *std.ArrayList(u8), address: usize, n: i32) void {
     var n_bytes = @ptrCast(*[4]u8, &n_var);
     while (i < word_size) : (i += 1) {
         array.items[@intCast(usize, address + i)] = n_bytes[@intCast(usize, i)];
+    }
+}
+
+const testing = std.testing;
+
+test "examples" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var allocator = &arena.allocator;
+
+    {
+        const example_input_path = "examples/codegened0.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output0.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList(i32).init(allocator);
+        const bytecode = try loadBytecode(allocator, content_input, &string_pool, &globals);
+        var vm = VirtualMachine.init(allocator, bytecode, string_pool, globals);
+        try vm.interp();
+        const pretty_output: []const u8 = vm.output.items;
+
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
+    }
+
+    {
+        const example_input_path = "examples/codegened1.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output1.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList(i32).init(allocator);
+        const bytecode = try loadBytecode(allocator, content_input, &string_pool, &globals);
+        var vm = VirtualMachine.init(allocator, bytecode, string_pool, globals);
+        try vm.interp();
+        const pretty_output: []const u8 = vm.output.items;
+
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
     }
 }
