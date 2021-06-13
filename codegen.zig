@@ -132,13 +132,33 @@ pub const CodeGenerator = struct {
                     const condition_address = self.currentAddress();
                     try self.genH(t.left);
                     try self.emitByte(.jz);
-                    const iffalse_address_hole = self.currentAddress();
+                    const point_to_end_address_hole = self.currentAddress();
                     try self.emitHole(4);
                     try self.genH(t.right);
                     try self.emitByte(.jmp);
                     try self.emitInt(condition_address);
                     const end_address = self.currentAddress();
-                    self.insertInt(iffalse_address_hole, end_address);
+                    self.insertInt(point_to_end_address_hole, end_address);
+                },
+                .kw_if => {
+                    try self.genH(t.left);
+                    try self.emitByte(.jz);
+                    const point_to_else_address_hole = self.currentAddress();
+                    try self.emitHole(4);
+                    try self.genH(t.right.?.left);
+                    if (t.right.?.right) |else_tree| {
+                        try self.emitByte(.jmp);
+                        const point_to_end_address_hole = self.currentAddress();
+                        try self.emitHole(4);
+                        const else_address = self.currentAddress();
+                        try self.genH(else_tree);
+                        const end_address = self.currentAddress();
+                        self.insertInt(point_to_else_address_hole, else_address);
+                        self.insertInt(point_to_end_address_hole, end_address);
+                    } else {
+                        const end_address = self.currentAddress();
+                        self.insertInt(point_to_else_address_hole, end_address);
+                    }
                 },
                 .assign => {
                     try self.genH(t.right);
@@ -620,6 +640,52 @@ test "examples" {
         const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
 
         const example_output_path = "examples/codegened5.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList([]const u8).init(allocator);
+        const ast = try loadAST(allocator, content_input, &string_pool, &globals);
+        var code_generator = CodeGenerator.init(allocator, string_pool, globals);
+        try code_generator.gen(ast);
+        const pretty_output: []const u8 = try code_generator.print();
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/parsed6.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/codegened6.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList([]const u8).init(allocator);
+        const ast = try loadAST(allocator, content_input, &string_pool, &globals);
+        var code_generator = CodeGenerator.init(allocator, string_pool, globals);
+        try code_generator.gen(ast);
+        const pretty_output: []const u8 = try code_generator.print();
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/parsed7.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/codegened7.txt";
         var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
         defer std.fs.File.close(file_output);
         const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
