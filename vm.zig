@@ -1,5 +1,4 @@
 const std = @import("std");
-const p = std.debug.print;
 
 pub const VirtualMachineError = error{OutOfMemory};
 
@@ -37,10 +36,6 @@ pub const VirtualMachine = struct {
 
     pub fn interp(self: *Self) VirtualMachineError!void {
         while (true) : (self.pc += 1) {
-            // p(
-            //     "pc: {d}, sp: {d}, val: {d}, op: {}\n",
-            //     .{ self.pc, self.sp, self.stack[self.sp], @intToEnum(Op, self.program.items[self.pc]) },
-            // );
             switch (@intToEnum(Op, self.program.items[self.pc])) {
                 .push => self.push(self.unpackInt()),
                 .store => self.globals.items[@intCast(usize, self.unpackInt())] = self.pop(),
@@ -80,14 +75,12 @@ pub const VirtualMachine = struct {
     }
 
     fn push(self: *Self, n: i32) void {
-        // p("pushed: {d}\n", .{n});
         self.sp += 1;
         self.stack[self.sp] = n;
     }
 
     fn pop(self: *Self) i32 {
         std.debug.assert(self.sp != 0);
-        // p("popped: {d}\n", .{self.stack[self.sp]});
         self.sp -= 1;
         return self.stack[self.sp + 1];
     }
@@ -96,11 +89,7 @@ pub const VirtualMachine = struct {
         const arg_ptr = @ptrCast(*[4]u8, self.program.items[self.pc + 1 .. self.pc + 1 + word_size]);
         self.pc += word_size;
         var arg_array = arg_ptr.*;
-        for (arg_array) |byte, idx| {
-            // p("arg_array byte {d}: {x}\n", .{ idx, byte });
-        }
         const arg = @ptrCast(*i32, @alignCast(@alignOf(i32), &arg_array));
-        // p("unpacked: {d}\n", .{arg.*});
         return arg.*;
     }
 
@@ -112,7 +101,6 @@ pub const VirtualMachine = struct {
         const a = self.pop();
         const b = self.pop();
         const result = func(b, a);
-        // p("binOp :: {d} {d} :: res {d}\n", .{ a, b, result });
         self.push(result);
     }
 
@@ -175,7 +163,6 @@ pub fn main() !void {
     };
     defer file_handle.close();
     const input_content = try file_handle.readToEndAlloc(allocator, std.math.maxInt(usize));
-    p("\n==================\n\n{s}\n==================\n\n", .{input_content});
 
     var string_pool = std.ArrayList([]const u8).init(allocator);
     var globals = std.ArrayList(i32).init(allocator);
@@ -183,8 +170,7 @@ pub fn main() !void {
     var vm = VirtualMachine.init(allocator, bytecode, string_pool, globals);
     try vm.interp();
     const result: []const u8 = vm.output.items;
-    p("\n==================\n\n{s}\n==================\n", .{result});
-    // _ = try std.io.getStdOut().write(result);
+    _ = try std.io.getStdOut().write(result);
 }
 
 pub const Op = enum(u8) {
@@ -282,7 +268,7 @@ fn loadBytecode(
                     '\\' => try program_string.append('\\'),
                     'n' => try program_string.append('\n'),
                     else => {
-                        p("unknown escape sequence: {c}\n", .{ch});
+                        std.debug.print("unknown escape sequence: {c}\n", .{ch});
                         std.os.exit(1);
                     },
                 }
@@ -295,20 +281,12 @@ fn loadBytecode(
         }
         try string_pool.append(program_string.items);
     }
-    // p("bytecode length: {d}, globals_size: {d}, string_pool_size: {d}\n", .{
-    //     result.items.len,
-    //     globals_size,
-    //     string_pool_size,
-    // });
-
     while (line_it.next()) |line| {
         if (line.len == 0) break;
 
-        // p("{s}\n", .{line});
         var tok_it = std.mem.tokenize(line, " ");
         const address = try std.fmt.parseInt(usize, tok_it.next().?, 10);
         const op = Op.fromString(tok_it.next().?);
-        // p("address: {d}, op: {}, opint: {d}\n", .{ address, op, @enumToInt(op) });
         result.items[address] = @enumToInt(op);
         switch (op) {
             .fetch, .store => {
