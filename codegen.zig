@@ -21,7 +21,7 @@ pub const Op = enum(u8) {
     neg,
     not,
     jmp,
-    jq,
+    jz,
     prtc,
     prts,
     prti,
@@ -97,6 +97,18 @@ pub const CodeGenerator = struct {
                     try self.genH(t.left);
                     try self.genH(t.right);
                 },
+                .kw_while => {
+                    const condition_address = self.currentAddress();
+                    try self.genH(t.left);
+                    try self.emitByte(.jz);
+                    const iffalse_address_hole = self.currentAddress();
+                    try self.emitHole(4);
+                    try self.genH(t.right);
+                    try self.emitByte(.jmp);
+                    try self.emitInt(condition_address);
+                    const end_address = self.currentAddress();
+                    self.insertInt(iffalse_address_hole, end_address);
+                },
                 .assign => {
                     try self.genH(t.right);
                     try self.emitByte(.store);
@@ -126,6 +138,16 @@ pub const CodeGenerator = struct {
                     try self.emitByte(.fetch);
                     try self.emitInt(self.fetchGlobalOffset(t.value.?.string));
                 },
+                .less => {
+                    try self.genH(t.left);
+                    try self.genH(t.right);
+                    try self.emitByte(.lt);
+                },
+                .add => {
+                    try self.genH(t.left);
+                    try self.genH(t.right);
+                    try self.emitByte(.add);
+                },
                 else => {
                     std.debug.print("\nINTERP: UNKNOWN {}\n", .{t.typ});
                     std.os.exit(1);
@@ -147,8 +169,28 @@ pub const CodeGenerator = struct {
         }
     }
 
+    fn emitHole(self: *Self, size: usize) CodeGeneratorError!void {
+        var n = size;
+        while (n > 0) : (n -= 1) {
+            try self.bytecode.append(0xaa);
+        }
+    }
+
+    fn insertInt(self: *Self, address: i32, n: i32) void {
+        var i: i32 = 0;
+        var n_var = n;
+        var n_bytes = @ptrCast(*[4]u8, &n_var);
+        while (i < word_size) : (i += 1) {
+            self.bytecode.items[@intCast(usize, address + i)] = n_bytes[@intCast(usize, i)];
+        }
+    }
+
     fn emitHalt(self: *Self) CodeGeneratorError!void {
         try self.bytecode.append(@enumToInt(Op.halt));
+    }
+
+    fn currentAddress(self: Self) i32 {
+        return @intCast(i32, self.bytecode.items.len);
     }
 
     fn fetchStringOffset(self: Self, str: []const u8) i32 {
@@ -196,9 +238,21 @@ pub const CodeGenerator = struct {
                     try writer.print("fetch [{d}]\n", .{self.unpackInt(pc + 1)});
                     pc += word_size;
                 },
+                .jz => {
+                    const address = self.unpackInt(pc + 1);
+                    try writer.print("jz     ({d}) {d}\n", .{ address - @intCast(i32, pc) - 1, address });
+                    pc += word_size;
+                },
+                .jmp => {
+                    const address = self.unpackInt(pc + 1);
+                    try writer.print("jmp    ({d}) {d}\n", .{ address - @intCast(i32, pc) - 1, address });
+                    pc += word_size;
+                },
                 .prts => try writer.writeAll("prts\n"),
                 .prti => try writer.writeAll("prti\n"),
                 .prtc => try writer.writeAll("prtc\n"),
+                .lt => try writer.writeAll("lt\n"),
+                .add => try writer.writeAll("add\n"),
                 .halt => try writer.writeAll("halt\n"),
                 else => |en| {
                     std.debug.print("\nPRINT: UNKNOWN {} at pc {d}\n", .{ en, pc });
@@ -484,6 +538,29 @@ test "examples" {
         const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
 
         const example_output_path = "examples/codegened3.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList([]const u8).init(allocator);
+        const ast = try loadAST(allocator, content_input, &string_pool, &globals);
+        var code_generator = CodeGenerator.init(allocator, string_pool, globals);
+        try code_generator.gen(ast);
+        const pretty_output: []const u8 = try code_generator.print();
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/parsed4.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/codegened4.txt";
         var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
         defer std.fs.File.close(file_output);
         const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
