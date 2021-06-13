@@ -37,20 +37,44 @@ pub const VirtualMachine = struct {
 
     pub fn interp(self: *Self) VirtualMachineError!void {
         while (true) : (self.pc += 1) {
-            // p("pc: {d}\n", .{self.pc});
-            // p("sp: {d}, val: {d}\n", .{ self.sp, self.stack[self.sp] });
+            // p(
+            //     "pc: {d}, sp: {d}, val: {d}, op: {}\n",
+            //     .{ self.pc, self.sp, self.stack[self.sp], @intToEnum(Op, self.program.items[self.pc]) },
+            // );
             switch (@intToEnum(Op, self.program.items[self.pc])) {
                 .push => self.push(self.unpackInt()),
                 .store => self.globals.items[@intCast(usize, self.unpackInt())] = self.pop(),
                 .fetch => self.push(self.globals.items[@intCast(usize, self.unpackInt())]),
+                .jmp => self.pc = @intCast(usize, self.unpackInt() - 1),
+                .jz => {
+                    if (self.pop() == 0) {
+                        // -1 because `while` increases it with every iteration.
+                        // This doesn't allow to jump to location 0 because we use `usize` for `pc`,
+                        // just arbitrary implementation limitation.
+                        self.pc = @intCast(usize, self.unpackInt() - 1);
+                    } else {
+                        self.pc += word_size;
+                    }
+                },
                 .prts => try self.out("{s}", .{self.string_pool.items[@intCast(usize, self.pop())]}),
                 .prti => try self.out("{d}", .{self.pop()}),
                 .prtc => try self.out("{c}", .{@intCast(u8, self.pop())}),
+                .lt => self.binOp(lt),
+                .le => self.binOp(le),
+                .gt => self.binOp(gt),
+                .ge => self.binOp(ge),
+                .eq => self.binOp(eq),
+                .ne => self.binOp(ne),
+                .add => self.binOp(add),
+                .mul => self.binOp(mul),
+                .sub => self.binOp(sub),
+                .div => self.binOp(div),
+                .mod => self.binOp(mod),
+                .@"and" => self.binOp(@"and"),
+                .@"or" => self.binOp(@"or"),
+                .not => self.push(@boolToInt(self.pop() == 0)),
+                .neg => self.push(-self.pop()),
                 .halt => break,
-                else => {
-                    std.debug.print("\nINTERP: unknown {}\n", .{@intToEnum(Op, self.program.items[self.pc])});
-                    std.os.exit(1);
-                },
             }
         }
     }
@@ -62,7 +86,7 @@ pub const VirtualMachine = struct {
     }
 
     fn pop(self: *Self) i32 {
-        if (self.sp == 0) unreachable;
+        std.debug.assert(self.sp != 0);
         // p("popped: {d}\n", .{self.stack[self.sp]});
         self.sp -= 1;
         return self.stack[self.sp + 1];
@@ -82,6 +106,54 @@ pub const VirtualMachine = struct {
 
     pub fn out(self: *Self, comptime format: []const u8, args: anytype) VirtualMachineError!void {
         try self.output.writer().print(format, args);
+    }
+
+    fn binOp(self: *Self, func: fn (a: i32, b: i32) i32) void {
+        const a = self.pop();
+        const b = self.pop();
+        const result = func(b, a);
+        // p("binOp :: {d} {d} :: res {d}\n", .{ a, b, result });
+        self.push(result);
+    }
+
+    fn lt(a: i32, b: i32) i32 {
+        return @boolToInt(a < b);
+    }
+    fn le(a: i32, b: i32) i32 {
+        return @boolToInt(a <= b);
+    }
+    fn gt(a: i32, b: i32) i32 {
+        return @boolToInt(a > b);
+    }
+    fn ge(a: i32, b: i32) i32 {
+        return @boolToInt(a >= b);
+    }
+    fn eq(a: i32, b: i32) i32 {
+        return @boolToInt(a == b);
+    }
+    fn ne(a: i32, b: i32) i32 {
+        return @boolToInt(a != b);
+    }
+    fn add(a: i32, b: i32) i32 {
+        return a + b;
+    }
+    fn sub(a: i32, b: i32) i32 {
+        return a - b;
+    }
+    fn mul(a: i32, b: i32) i32 {
+        return a * b;
+    }
+    fn div(a: i32, b: i32) i32 {
+        return @divTrunc(a, b);
+    }
+    fn mod(a: i32, b: i32) i32 {
+        return @mod(a, b);
+    }
+    fn @"or"(a: i32, b: i32) i32 {
+        return @boolToInt((a != 0) or (b != 0));
+    }
+    fn @"and"(a: i32, b: i32) i32 {
+        return @boolToInt((a != 0) and (b != 0));
     }
 };
 
@@ -302,6 +374,48 @@ test "examples" {
         const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
 
         const example_output_path = "examples/output1.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList(i32).init(allocator);
+        const bytecode = try loadBytecode(allocator, content_input, &string_pool, &globals);
+        var vm = VirtualMachine.init(allocator, bytecode, string_pool, globals);
+        try vm.interp();
+        const pretty_output: []const u8 = vm.output.items;
+
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
+    }
+
+    {
+        const example_input_path = "examples/codegened3.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output3.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList(i32).init(allocator);
+        const bytecode = try loadBytecode(allocator, content_input, &string_pool, &globals);
+        var vm = VirtualMachine.init(allocator, bytecode, string_pool, globals);
+        try vm.interp();
+        const pretty_output: []const u8 = vm.output.items;
+
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
+    }
+
+    {
+        const example_input_path = "examples/codegened4.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output4.txt";
         var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
         defer std.fs.File.close(file_output);
         const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
