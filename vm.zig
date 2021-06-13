@@ -429,4 +429,214 @@ test "examples" {
 
         try testing.expectFmt(content_output, "{s}", .{pretty_output});
     }
+
+    {
+        const example_input_path = "examples/codegened5.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output5.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList(i32).init(allocator);
+        const bytecode = try loadBytecode(allocator, content_input, &string_pool, &globals);
+        var vm = VirtualMachine.init(allocator, bytecode, string_pool, globals);
+        try vm.interp();
+        const pretty_output: []const u8 = vm.output.items;
+
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
+    }
+
+    {
+        const example_input_path = "examples/codegened6.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output6.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList(i32).init(allocator);
+        const bytecode = try loadBytecode(allocator, content_input, &string_pool, &globals);
+        var vm = VirtualMachine.init(allocator, bytecode, string_pool, globals);
+        try vm.interp();
+        const pretty_output: []const u8 = vm.output.items;
+
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
+    }
+
+    {
+        const example_input_path = "examples/codegened7.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output7.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList(i32).init(allocator);
+        const bytecode = try loadBytecode(allocator, content_input, &string_pool, &globals);
+        var vm = VirtualMachine.init(allocator, bytecode, string_pool, globals);
+        try vm.interp();
+        const pretty_output: []const u8 = vm.output.items;
+
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
+    }
+
+    {
+        const example_input_path = "examples/codegened8.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output8.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList(i32).init(allocator);
+        const bytecode = try loadBytecode(allocator, content_input, &string_pool, &globals);
+        var vm = VirtualMachine.init(allocator, bytecode, string_pool, globals);
+        try vm.interp();
+        const pretty_output: []const u8 = vm.output.items;
+
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
+    }
+
+    {
+        const example_input_path = "examples/codegened9.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output9.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList(i32).init(allocator);
+        const bytecode = try loadBytecode(allocator, content_input, &string_pool, &globals);
+        var vm = VirtualMachine.init(allocator, bytecode, string_pool, globals);
+        try vm.interp();
+        const pretty_output: []const u8 = vm.output.items;
+
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
+    }
+
+    {
+        const example_input_path = "examples/codegened10.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output10.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList(i32).init(allocator);
+        const bytecode = try loadBytecode(allocator, content_input, &string_pool, &globals);
+        var vm = VirtualMachine.init(allocator, bytecode, string_pool, globals);
+        try vm.interp();
+        const pretty_output: []const u8 = vm.output.items;
+
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
+    }
+
+    {
+        const example_input_path = "examples/codegened11.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output11.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList(i32).init(allocator);
+        const bytecode = try loadBytecode(allocator, content_input, &string_pool, &globals);
+        var vm = VirtualMachine.init(allocator, bytecode, string_pool, globals);
+        try vm.interp();
+        const pretty_output: []const u8 = vm.output.items;
+
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
+    }
+
+    {
+        const example_input_path = "examples/codegened12.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output12.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList(i32).init(allocator);
+        const bytecode = try loadBytecode(allocator, content_input, &string_pool, &globals);
+        var vm = VirtualMachine.init(allocator, bytecode, string_pool, globals);
+        try vm.interp();
+        const pretty_output: []const u8 = vm.output.items;
+
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
+    }
+
+    {
+        const example_input_path = "examples/codegened13.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output13.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList(i32).init(allocator);
+        const bytecode = try loadBytecode(allocator, content_input, &string_pool, &globals);
+        var vm = VirtualMachine.init(allocator, bytecode, string_pool, globals);
+        try vm.interp();
+        const pretty_output: []const u8 = vm.output.items;
+
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
+    }
+
+    {
+        const example_input_path = "examples/codegened14.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/output14.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList(i32).init(allocator);
+        const bytecode = try loadBytecode(allocator, content_input, &string_pool, &globals);
+        var vm = VirtualMachine.init(allocator, bytecode, string_pool, globals);
+        try vm.interp();
+        const pretty_output: []const u8 = vm.output.items;
+
+        try testing.expectFmt(content_output, "{s}", .{pretty_output});
+    }
 }
