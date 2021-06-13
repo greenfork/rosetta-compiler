@@ -34,6 +34,7 @@ pub const TokenType = enum {
     string,
     eof,
 
+    // More efficient implementation can be done with `std.enums.directEnumArray`.
     pub fn toString(self: @This()) []const u8 {
         return switch (self) {
             .unknown => "UNKNOWN",
@@ -73,9 +74,7 @@ pub const TokenType = enum {
 };
 
 pub const TokenValue = union(enum) {
-    ident: []const u8,
     intlit: i32,
-    intchar: i32,
     string: []const u8,
 };
 
@@ -86,6 +85,7 @@ pub const Token = struct {
     value: ?TokenValue = null,
 };
 
+// Error conditions described in the task.
 pub const LexerError = error{
     EmptyCharacterConstant,
     UnknownEscapeSequence,
@@ -102,7 +102,7 @@ pub const Lexer = struct {
     line: usize,
     col: usize,
     offset: usize,
-    start: bool = true,
+    start: bool,
 
     const Self = @This();
 
@@ -112,14 +112,8 @@ pub const Lexer = struct {
             .line = 1,
             .col = 1,
             .offset = 0,
+            .start = true,
         };
-    }
-
-    fn print(self: Self) void {
-        std.debug.print(
-            "Lexer: line({d}), column({d}), offset({d})\n",
-            .{ self.line, self.col, self.offset },
-        );
     }
 
     pub fn buildToken(self: Self) Token {
@@ -134,7 +128,11 @@ pub const Lexer = struct {
         return self.content[self.offset];
     }
 
+    // Alternative implementation is to return `Token` value from `next()` which is
+    // arguably more idiomatic version.
     pub fn next(self: *Self) ?u8 {
+        // We use `start` in order to make the very first invocation of `next()` to return
+        // the very first character. It should be possible to avoid this variable.
         if (self.start) {
             self.start = false;
         } else {
@@ -207,7 +205,7 @@ pub const Lexer = struct {
             result.typ = .kw_putc;
         } else {
             result.typ = .identifier;
-            result.value = TokenValue{ .ident = self.content[init_offset..final_offset] };
+            result.value = TokenValue{ .string = self.content[init_offset..final_offset] };
         }
 
         return result;
@@ -237,6 +235,8 @@ pub const Lexer = struct {
         return result;
     }
 
+    /// Choose either `ifyes` or `ifno` token type depending on whether the peeked
+    /// character is `by`.
     fn followed(self: *Self, by: u8, ifyes: TokenType, ifno: TokenType) Token {
         var result = self.buildToken();
         if (self.peek()) |ch| {
@@ -252,6 +252,7 @@ pub const Lexer = struct {
         return result;
     }
 
+    /// Raise an error if there's no next `by` character but return token with `typ` otherwise.
     fn consecutive(self: *Self, by: u8, typ: TokenType) LexerError!Token {
         const result = self.buildTokenT(typ);
         if (self.peek()) |ch| {
@@ -285,6 +286,8 @@ pub const Lexer = struct {
         return result;
     }
 
+    // This is a beautiful way of how Zig allows to remove bilerplate and at the same time
+    // to not lose any error completeness guarantees.
     fn nextOrEmpty(self: *Self) LexerError!u8 {
         return self.next() orelse LexerError.EmptyCharacterConstant;
     }
@@ -296,8 +299,8 @@ pub const Lexer = struct {
             '\'', '\n' => return LexerError.EmptyCharacterConstant,
             '\\' => {
                 switch (try self.nextOrEmpty()) {
-                    'n' => result.value = TokenValue{ .intchar = '\n' },
-                    '\\' => result.value = TokenValue{ .intchar = '\\' },
+                    'n' => result.value = TokenValue{ .intlit = '\n' },
+                    '\\' => result.value = TokenValue{ .intlit = '\\' },
                     else => return LexerError.EmptyCharacterConstant,
                 }
                 switch (try self.nextOrEmpty()) {
@@ -306,7 +309,7 @@ pub const Lexer = struct {
                 }
             },
             else => {
-                result.value = TokenValue{ .intchar = self.curr() };
+                result.value = TokenValue{ .intlit = self.curr() };
                 switch (try self.nextOrEmpty()) {
                     '\'' => {},
                     else => return LexerError.MulticharacterConstant,
@@ -362,6 +365,7 @@ pub fn main() !void {
     var arg_it = std.process.args();
     _ = try arg_it.next(allocator) orelse unreachable; // program name
     const file_name = arg_it.next(allocator);
+    // We accept both files and standard input.
     var file_handle = blk: {
         if (file_name) |file_name_delimited| {
             const fname: []const u8 = try file_name_delimited;
@@ -391,20 +395,10 @@ fn tokenListToString(allocator: *std.mem.Allocator, token_list: std.ArrayList(To
                     init_fmt ++ "{s}\n",
                     common_args ++ .{str},
                 )),
-                .ident => |ident| _ = try w.write(try std.fmt.allocPrint(
-                    allocator,
-                    init_fmt ++ "{s}\n",
-                    common_args ++ .{ident},
-                )),
                 .intlit => |i| _ = try w.write(try std.fmt.allocPrint(
                     allocator,
                     init_fmt ++ "{d}\n",
                     common_args ++ .{i},
-                )),
-                .intchar => |ch| _ = try w.write(try std.fmt.allocPrint(
-                    allocator,
-                    init_fmt ++ "{d}\n",
-                    common_args ++ .{ch},
                 )),
             }
         } else {

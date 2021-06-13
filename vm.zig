@@ -6,14 +6,14 @@ pub const VirtualMachine = struct {
     allocator: *std.mem.Allocator,
     stack: [stack_size]i32,
     program: std.ArrayList(u8),
-    sp: usize,
-    pc: usize,
-    string_pool: std.ArrayList([]const u8),
-    globals: std.ArrayList(i32),
-    output: std.ArrayList(u8),
+    sp: usize, // stack pointer
+    pc: usize, // program counter
+    string_pool: std.ArrayList([]const u8), // all the strings in the program
+    globals: std.ArrayList(i32), // all the variables in the program, they are global
+    output: std.ArrayList(u8), // Instead of outputting to stdout, we do it here for better testing.
 
     const Self = @This();
-    const stack_size = 32;
+    const stack_size = 32; // Can be arbitrarily increased/decreased as long as we have enough.
     const word_size = @sizeOf(i32);
 
     pub fn init(
@@ -24,7 +24,7 @@ pub const VirtualMachine = struct {
     ) Self {
         return VirtualMachine{
             .allocator = allocator,
-            .stack = [_]i32{0xabab} ** stack_size,
+            .stack = [_]i32{std.math.maxInt(i32)} ** stack_size,
             .program = program,
             .sp = 0,
             .pc = 0,
@@ -100,6 +100,8 @@ pub const VirtualMachine = struct {
     fn binOp(self: *Self, func: fn (a: i32, b: i32) i32) void {
         const a = self.pop();
         const b = self.pop();
+        // Note that arguments are in reversed order because this is how we interact with
+        // push/pop operations of the stack.
         const result = func(b, a);
         self.push(result);
     }
@@ -153,6 +155,7 @@ pub fn main() !void {
     var arg_it = std.process.args();
     _ = try arg_it.next(allocator) orelse unreachable; // program name
     const file_name = arg_it.next(allocator);
+    // We accept both files and standard input.
     var file_handle = blk: {
         if (file_name) |file_name_delimited| {
             const fname: []const u8 = try file_name_delimited;
@@ -231,6 +234,7 @@ pub const Op = enum(u8) {
     }
 };
 
+// 100 lines of code to load serialized bytecode, eh
 fn loadBytecode(
     allocator: *std.mem.Allocator,
     str: []const u8,

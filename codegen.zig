@@ -29,6 +29,7 @@ pub const CodeGenerator = struct {
         try self.emitHalt();
     }
 
+    // Helper function to allow recursion.
     pub fn genH(self: *Self, ast: ?*Tree) CodeGeneratorError!void {
         if (ast) |t| {
             switch (t.typ) {
@@ -41,7 +42,7 @@ pub const CodeGenerator = struct {
                     try self.genH(t.left);
                     try self.emitByte(.jz);
                     const condition_address_hole = self.currentAddress();
-                    try self.emitHole(4);
+                    try self.emitHole();
                     try self.genH(t.right);
                     try self.emitByte(.jmp);
                     try self.emitInt(condition_address);
@@ -51,12 +52,12 @@ pub const CodeGenerator = struct {
                     try self.genH(t.left);
                     try self.emitByte(.jz);
                     const condition_address_hole = self.currentAddress();
-                    try self.emitHole(4);
+                    try self.emitHole();
                     try self.genH(t.right.?.left);
                     if (t.right.?.right) |else_tree| {
                         try self.emitByte(.jmp);
                         const else_address_hole = self.currentAddress();
-                        try self.emitHole(4);
+                        try self.emitHole();
                         const else_address = self.currentAddress();
                         try self.genH(else_tree);
                         self.insertInt(condition_address_hole, else_address);
@@ -138,13 +139,13 @@ pub const CodeGenerator = struct {
         }
     }
 
-    fn emitHole(self: *Self, size: usize) CodeGeneratorError!void {
-        var n = size;
-        while (n > 0) : (n -= 1) {
-            try self.bytecode.append(0xaa);
-        }
+    // Holes are later populated via `insertInt` because they can't be known when
+    // we populate the bytecode array sequentially.
+    fn emitHole(self: *Self) CodeGeneratorError!void {
+        try self.emitInt(std.math.maxInt(i32));
     }
 
+    // Populates the "hole" produced by `emitHole`.
     fn insertInt(self: *Self, address: i32, n: i32) void {
         var i: i32 = 0;
         var n_var = n;
@@ -331,6 +332,7 @@ pub fn main() !void {
     var arg_it = std.process.args();
     _ = try arg_it.next(allocator) orelse unreachable; // program name
     const file_name = arg_it.next(allocator);
+    // We accept both files and standard input.
     var file_handle = blk: {
         if (file_name) |file_name_delimited| {
             const fname: []const u8 = try file_name_delimited;

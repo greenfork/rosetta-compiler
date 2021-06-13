@@ -1,14 +1,12 @@
 const std = @import("std");
 
 pub const NodeValue = union(enum) {
-    identifier: []const u8,
     integer: i32,
     string: []const u8,
 
     fn fromToken(token: Token) ?NodeValue {
         if (token.value) |value| {
             switch (value) {
-                .identifier => |ident| return NodeValue{ .identifier = ident },
                 .integer => |int| return NodeValue{ .integer = int },
                 .string => |str| return NodeValue{ .string = str },
             }
@@ -21,7 +19,7 @@ pub const NodeValue = union(enum) {
 pub const Tree = struct {
     left: ?*Tree,
     right: ?*Tree,
-    typ: NodeType = .unknown,
+    typ: NodeType,
     value: ?NodeValue = null,
 };
 
@@ -40,7 +38,7 @@ pub const Parser = struct {
     pub fn init(allocator: *std.mem.Allocator, str: []const u8) Self {
         return Self{
             .token_it = LexerOutputTokenizer.init(str),
-            .curr = Token.init(),
+            .curr = Token{ .line = 0, .col = 0, .typ = .unknown },
             .allocator = allocator,
         };
     }
@@ -68,16 +66,15 @@ pub const Parser = struct {
         return result;
     }
 
-    fn print(self: Self) void {
-        std.debug.print("\n{}\n\n", .{self.curr});
-    }
-
+    /// Classic "Recursive descent" statement parser.
     fn parseStmt(self: *Self) ParserError!?*Tree {
         var result: ?*Tree = null;
         switch (self.curr.typ) {
             .kw_print => {
                 try self.next();
                 try self.expect(.left_paren);
+                // Parse each print's argument as an expression delimited by commas until we reach
+                // a closing parens.
                 while (true) {
                     var expr: ?*Tree = null;
                     if (self.curr.typ == .string) {
@@ -110,7 +107,7 @@ pub const Parser = struct {
             .kw_if => {
                 try self.next();
                 const expr = try self.parseParenExpr();
-                const stmt = try self.parseStmt();
+                const if_stmt = try self.parseStmt();
                 const else_stmt = blk: {
                     if (self.curr.typ == .kw_else) {
                         try self.next();
@@ -119,8 +116,11 @@ pub const Parser = struct {
                         break :blk null;
                     }
                 };
-                const else_node = try self.makeNode(.kw_if, stmt, else_stmt);
-                result = try self.makeNode(.kw_if, expr, else_node);
+                const stmt_node = try self.makeNode(.kw_if, if_stmt, else_stmt);
+                // If-statement uses `.kw_if` node for both first node with `expr` on the left
+                // and statements on the right and also `.kw_if` node which goes to the right
+                // and contains both if-branch and else-branch.
+                result = try self.makeNode(.kw_if, expr, stmt_node);
             },
             .left_brace => {
                 try self.next();
@@ -146,6 +146,7 @@ pub const Parser = struct {
         return result;
     }
 
+    /// "Precedence climbing" expression parser.
     fn parseExpr(self: *Self, precedence: i8) ParserError!?*Tree {
         var result: ?*Tree = null;
         switch (self.curr.typ) {
@@ -168,8 +169,8 @@ pub const Parser = struct {
                 try self.next();
                 result = try self.parseExpr(precedence);
             },
-            .integer, .identifier => |typ| {
-                const node_type = NodeMetadata.find(typ).node_type;
+            .integer, .identifier => {
+                const node_type = NodeMetadata.find(self.curr.typ).node_type;
                 result = try self.makeLeaf(node_type, NodeValue.fromToken(self.curr));
                 try self.next();
             },
@@ -181,7 +182,6 @@ pub const Parser = struct {
 
         var curr_metadata = NodeMetadata.find(self.curr.typ);
         while (curr_metadata.binary and curr_metadata.precedence >= precedence) {
-            const node_type = curr_metadata.node_type;
             const new_precedence =
                 if (curr_metadata.right_associative)
                 curr_metadata.precedence
@@ -189,7 +189,7 @@ pub const Parser = struct {
                 curr_metadata.precedence + 1;
             try self.next();
             const sub_expr = try self.parseExpr(new_precedence);
-            result = try self.makeNode(node_type, result, sub_expr);
+            result = try self.makeNode(curr_metadata.node_type, result, sub_expr);
             curr_metadata = NodeMetadata.find(self.curr.typ);
         }
         return result;
@@ -207,7 +207,7 @@ pub const Parser = struct {
         if (token) |tok| {
             self.curr = tok;
         } else {
-            self.curr = Token.init();
+            self.curr = Token{ .line = 0, .col = 0, .typ = .unknown };
         }
     }
 
@@ -238,6 +238,7 @@ pub fn main() !void {
     var arg_it = std.process.args();
     _ = try arg_it.next(allocator) orelse unreachable; // program name
     const file_name = arg_it.next(allocator);
+    // We accept both files and standard input.
     var file_handle = blk: {
         if (file_name) |file_name_delimited| {
             const fname: []const u8 = try file_name_delimited;
@@ -447,7 +448,6 @@ pub const TokenType = enum {
 };
 
 pub const TokenValue = union(enum) {
-    identifier: []const u8,
     integer: i32,
     string: []const u8,
 };
@@ -457,10 +457,6 @@ pub const Token = struct {
     col: usize,
     typ: TokenType = .unknown,
     value: ?TokenValue = null,
-
-    fn init() Token {
-        return Token{ .line = 0, .col = 0, .typ = .unknown };
-    }
 };
 
 const TreeToStringError = error{OutOfMemory};
@@ -477,12 +473,7 @@ fn treeToString(
             .{t.typ.toString()},
         ));
         switch (t.typ) {
-            .identifier => _ = try writer.write(try std.fmt.allocPrint(
-                allocator,
-                "   {s}\n",
-                .{t.value.?.identifier},
-            )),
-            .string => _ = try writer.write(try std.fmt.allocPrint(
+            .string, .identifier => _ = try writer.write(try std.fmt.allocPrint(
                 allocator,
                 "   {s}\n",
                 .{t.value.?.string},
@@ -534,12 +525,11 @@ pub const LexerOutputTokenizer = struct {
             if (value) |val| {
                 const token_value = blk: {
                     switch (typ) {
-                        .string => {
+                        .string, .identifier => {
                             tokens_it.index = pre_value_index;
                             break :blk TokenValue{ .string = tokens_it.rest() };
                         },
                         .integer => break :blk TokenValue{ .integer = try std.fmt.parseInt(i32, val, 10) },
-                        .identifier => break :blk TokenValue{ .identifier = val },
                         else => unreachable,
                     }
                 };

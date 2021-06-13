@@ -15,6 +15,8 @@ pub const ASTInterpreter = struct {
         };
     }
 
+    // Returning `NodeValue` from this function looks suboptimal and this should
+    // probably be a separate type.
     pub fn interp(self: *Self, tree: ?*Tree) ASTInterpreterError!?NodeValue {
         if (tree) |t| {
             switch (t.typ) {
@@ -139,6 +141,7 @@ pub fn main() !void {
     var arg_it = std.process.args();
     _ = try arg_it.next(allocator) orelse unreachable; // program name
     const file_name = arg_it.next(allocator);
+    // We accept both files and standard input.
     var file_handle = blk: {
         if (file_name) |file_name_delimited| {
             const fname: []const u8 = try file_name_delimited;
