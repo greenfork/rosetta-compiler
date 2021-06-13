@@ -15,6 +15,7 @@ pub const VirtualMachine = struct {
 
     const Self = @This();
     const stack_size = 32;
+    const word_size = @sizeOf(i32);
 
     pub fn init(
         allocator: *std.mem.Allocator,
@@ -24,7 +25,7 @@ pub const VirtualMachine = struct {
     ) Self {
         return VirtualMachine{
             .allocator = allocator,
-            .stack = [_]i32{std.math.maxInt(i32)} ** stack_size,
+            .stack = [_]i32{0xabab} ** stack_size,
             .program = program,
             .sp = 0,
             .pc = 0,
@@ -35,11 +36,54 @@ pub const VirtualMachine = struct {
     }
 
     pub fn interp(self: *Self) VirtualMachineError!void {
-        try self.out("Hello\n", .{});
+        while (true) : (self.pc += 1) {
+            // p("while pc: {d}\n", .{self.pc});
+            switch (@intToEnum(Op, self.program.items[self.pc])) {
+                .push => {
+                    self.push(self.unpackInt());
+                },
+                .prts => {
+                    const popped = self.pop();
+                    // p("popped: {d}\n", .{popped});
+                    const str = self.string_pool.items[@intCast(usize, popped)];
+                    try self.out(str);
+                },
+                .halt => break,
+                else => {
+                    std.debug.print("\nINTERP: unknown {}\n", .{@intToEnum(Op, self.program.items[self.pc])});
+                    std.os.exit(1);
+                },
+            }
+        }
     }
 
-    pub fn out(self: *Self, comptime format: []const u8, args: anytype) VirtualMachineError!void {
-        try self.output.writer().print(format, args);
+    fn push(self: *Self, n: i32) void {
+        // p("pushed: {d}\n", .{n});
+        self.sp += 1;
+        self.stack[self.sp] = n;
+    }
+
+    fn pop(self: *Self) i32 {
+        if (self.sp == 0) unreachable;
+        // p("popped: {d}\n", .{self.stack[self.sp]});
+        self.sp -= 1;
+        return self.stack[self.sp + 1];
+    }
+
+    fn unpackInt(self: *Self) i32 {
+        const arg_ptr = @ptrCast(*[4]u8, self.program.items[self.pc + 1 .. self.pc + 1 + word_size]);
+        self.pc += word_size;
+        var arg_array = arg_ptr.*;
+        for (arg_array) |byte, idx| {
+            // p("arg_array byte {d}: {x}\n", .{ idx, byte });
+        }
+        const arg = @ptrCast(*i32, @alignCast(@alignOf(i32), &arg_array));
+        // p("unpacked: {d}\n", .{arg.*});
+        return arg.*;
+    }
+
+    pub fn out(self: *Self, str: []const u8) VirtualMachineError!void {
+        try self.output.writer().writeAll(str);
     }
 };
 
@@ -61,6 +105,7 @@ pub fn main() !void {
     };
     defer file_handle.close();
     const input_content = try file_handle.readToEndAlloc(allocator, std.math.maxInt(usize));
+    p("\n==================\n\n{s}\n==================\n\n", .{input_content});
 
     var string_pool = std.ArrayList([]const u8).init(allocator);
     var globals = std.ArrayList(i32).init(allocator);
@@ -68,7 +113,8 @@ pub fn main() !void {
     var vm = VirtualMachine.init(allocator, bytecode, string_pool, globals);
     try vm.interp();
     const result: []const u8 = vm.output.items;
-    _ = try std.io.getStdOut().write(result);
+    p("\n==================\n\n{s}\n==================\n", .{result});
+    // _ = try std.io.getStdOut().write(result);
 }
 
 pub const Op = enum(u8) {
@@ -155,7 +201,29 @@ fn loadBytecode(
     try string_pool.ensureTotalCapacity(string_pool_size);
     var string_cnt: usize = 0;
     while (string_cnt < string_pool_size) : (string_cnt += 1) {
-        try string_pool.append(line_it.next().?);
+        const line = line_it.next().?;
+        var program_string = try std.ArrayList(u8).initCapacity(allocator, line.len);
+        var escaped = false;
+        // Skip double quotes
+        for (line[1 .. line.len - 1]) |ch| {
+            if (escaped) {
+                escaped = false;
+                switch (ch) {
+                    '\\' => try program_string.append('\\'),
+                    'n' => try program_string.append('\n'),
+                    else => {
+                        p("unknown escape sequence: {c}\n", .{ch});
+                        std.os.exit(1);
+                    },
+                }
+            } else {
+                switch (ch) {
+                    '\\' => escaped = true,
+                    else => try program_string.append(ch),
+                }
+            }
+        }
+        try string_pool.append(program_string.items);
     }
     // p("bytecode length: {d}, globals_size: {d}, string_pool_size: {d}\n", .{
     //     result.items.len,
@@ -177,6 +245,13 @@ fn loadBytecode(
                 const index_bracketed = tok_it.rest();
                 const index = try std.fmt.parseInt(i32, index_bracketed[1 .. index_bracketed.len - 1], 10);
                 insertInt(&result, address + 1, index);
+            },
+            .push => {
+                insertInt(&result, address + 1, try std.fmt.parseInt(i32, tok_it.rest(), 10));
+            },
+            .jmp, .jz => {
+                p("not impl\n", .{});
+                std.os.exit(1);
             },
             else => {},
         }
