@@ -57,7 +57,38 @@ pub const Op = enum(u8) {
     });
 
     pub fn fromNodeType(node_type: NodeType) ?Op {
-        return from_node[node_type];
+        return from_node[@enumToInt(node_type)];
+    }
+
+    const to_string = std.enums.directEnumArray(Op, []const u8, 0, .{
+        .fetch = "fetch",
+        .store = "store",
+        .push = "push",
+        .add = "add",
+        .sub = "sub",
+        .mul = "mul",
+        .div = "div",
+        .mod = "mod",
+        .lt = "lt",
+        .gt = "gt",
+        .le = "le",
+        .ge = "ge",
+        .eq = "eq",
+        .ne = "ne",
+        .@"and" = "and",
+        .@"or" = "or",
+        .neg = "neg",
+        .not = "not",
+        .jmp = "jmp",
+        .jz = "jz",
+        .prtc = "prtc",
+        .prts = "prts",
+        .prti = "prti",
+        .halt = "halt",
+    });
+
+    pub fn toString(self: Op) []const u8 {
+        return to_string[@enumToInt(self)];
     }
 };
 
@@ -138,22 +169,36 @@ pub const CodeGenerator = struct {
                     try self.emitByte(.fetch);
                     try self.emitInt(self.fetchGlobalOffset(t.value.?.string));
                 },
-                .less => {
+                .negate, .not => {
                     try self.genH(t.left);
-                    try self.genH(t.right);
-                    try self.emitByte(.lt);
+                    try self.emitByte(Op.fromNodeType(t.typ).?);
                 },
-                .add => {
-                    try self.genH(t.left);
-                    try self.genH(t.right);
-                    try self.emitByte(.add);
-                },
+                .add,
+                .multiply,
+                .subtract,
+                .divide,
+                .mod,
+                .less,
+                .less_equal,
+                .greater,
+                .greater_equal,
+                .equal,
+                .not_equal,
+                .bool_and,
+                .bool_or,
+                => try self.genBinOp(t),
                 else => {
                     std.debug.print("\nINTERP: UNKNOWN {}\n", .{t.typ});
                     std.os.exit(1);
                 },
             }
         }
+    }
+
+    fn genBinOp(self: *Self, tree: *Tree) CodeGeneratorError!void {
+        try self.genH(tree.left);
+        try self.genH(tree.right);
+        try self.emitByte(Op.fromNodeType(tree.typ).?);
     }
 
     fn emitByte(self: *Self, op: Op) CodeGeneratorError!void {
@@ -248,16 +293,7 @@ pub const CodeGenerator = struct {
                     try writer.print("jmp    ({d}) {d}\n", .{ address - @intCast(i32, pc) - 1, address });
                     pc += word_size;
                 },
-                .prts => try writer.writeAll("prts\n"),
-                .prti => try writer.writeAll("prti\n"),
-                .prtc => try writer.writeAll("prtc\n"),
-                .lt => try writer.writeAll("lt\n"),
-                .add => try writer.writeAll("add\n"),
-                .halt => try writer.writeAll("halt\n"),
-                else => |en| {
-                    std.debug.print("\nPRINT: UNKNOWN {} at pc {d}\n", .{ en, pc });
-                    std.os.exit(1);
-                },
+                else => try writer.print("{s}\n", .{Op.toString(@intToEnum(Op, self.bytecode.items[pc]))}),
             }
         }
 
@@ -561,6 +597,29 @@ test "examples" {
         const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
 
         const example_output_path = "examples/codegened4.txt";
+        var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_output);
+        const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
+
+        var string_pool = std.ArrayList([]const u8).init(allocator);
+        var globals = std.ArrayList([]const u8).init(allocator);
+        const ast = try loadAST(allocator, content_input, &string_pool, &globals);
+        var code_generator = CodeGenerator.init(allocator, string_pool, globals);
+        try code_generator.gen(ast);
+        const pretty_output: []const u8 = try code_generator.print();
+
+        const stripped_expected = try squishSpaces(allocator, content_output);
+        const stripped_result = try squishSpaces(allocator, pretty_output);
+        try testing.expectFmt(stripped_expected, "{s}", .{stripped_result});
+    }
+
+    {
+        const example_input_path = "examples/parsed5.txt";
+        var file_input = try std.fs.cwd().openFile(example_input_path, std.fs.File.OpenFlags{});
+        defer std.fs.File.close(file_input);
+        const content_input = try std.fs.File.readToEndAlloc(file_input, allocator, std.math.maxInt(usize));
+
+        const example_output_path = "examples/codegened5.txt";
         var file_output = try std.fs.cwd().openFile(example_output_path, std.fs.File.OpenFlags{});
         defer std.fs.File.close(file_output);
         const content_output = try std.fs.File.readToEndAlloc(file_output, allocator, std.math.maxInt(usize));
