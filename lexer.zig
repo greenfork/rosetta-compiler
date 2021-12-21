@@ -294,7 +294,6 @@ pub const Lexer = struct {
 
     fn integerChar(self: *Self) LexerError!Token {
         var result = self.buildTokenT(.integer);
-        const init_offset = self.offset;
         switch (try self.nextOrEmpty()) {
             '\'', '\n' => return LexerError.EmptyCharacterConstant,
             '\\' => {
@@ -320,7 +319,7 @@ pub const Lexer = struct {
     }
 };
 
-pub fn lex(allocator: *std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
+pub fn lex(allocator: std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
     var tokens = std.ArrayList(Token).init(allocator);
     var lexer = Lexer.init(content);
     while (lexer.next()) |ch| {
@@ -360,7 +359,7 @@ pub fn lex(allocator: *std.mem.Allocator, content: []u8) !std.ArrayList(Token) {
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
-    var allocator = &arena.allocator;
+    const allocator = arena.allocator();
 
     var arg_it = std.process.args();
     _ = try arg_it.next(allocator) orelse unreachable; // program name
@@ -382,7 +381,7 @@ pub fn main() !void {
     _ = try std.io.getStdOut().write(pretty_output);
 }
 
-fn tokenListToString(allocator: *std.mem.Allocator, token_list: std.ArrayList(Token)) ![]u8 {
+fn tokenListToString(allocator: std.mem.Allocator, token_list: std.ArrayList(Token)) ![]u8 {
     var result = std.ArrayList(u8).init(allocator);
     var w = result.writer();
     for (token_list.items) |token| {
@@ -413,8 +412,7 @@ const testing = std.testing;
 test "tokenListToString" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
-    var allocator = &arena.allocator;
-    var tokens = std.ArrayList(Token).init(allocator);
+    const allocator = arena.allocator();
     const str: []const u8 = "\"Hello, World!\\n\"";
     const tok_array = [6]Token{
         Token{ .line = 4, .col = 1, .typ = .kw_print },
@@ -441,9 +439,6 @@ test "tokenListToString" {
 }
 
 test "lexer" {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    var allocator = &arena.allocator;
     const test_str =
         \\abc
         \\de
@@ -461,7 +456,7 @@ test "lexer" {
     try testing.expect(null == lexer.next());
 }
 
-fn squishSpaces(allocator: *std.mem.Allocator, str: []const u8) ![]u8 {
+fn squishSpaces(allocator: std.mem.Allocator, str: []const u8) ![]u8 {
     var result = std.ArrayList(u8).init(allocator);
     var was_space = false;
     for (str) |ch| {
@@ -484,7 +479,7 @@ fn squishSpaces(allocator: *std.mem.Allocator, str: []const u8) ![]u8 {
 test "examples" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
-    var allocator = &arena.allocator;
+    const allocator = arena.allocator();
 
     {
         const example_input_path = "examples/input0.txt";

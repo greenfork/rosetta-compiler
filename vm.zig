@@ -3,7 +3,7 @@ const std = @import("std");
 pub const VirtualMachineError = error{OutOfMemory};
 
 pub const VirtualMachine = struct {
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
     stack: [stack_size]i32,
     program: std.ArrayList(u8),
     sp: usize, // stack pointer
@@ -17,7 +17,7 @@ pub const VirtualMachine = struct {
     const word_size = @sizeOf(i32);
 
     pub fn init(
-        allocator: *std.mem.Allocator,
+        allocator: std.mem.Allocator,
         program: std.ArrayList(u8),
         string_pool: std.ArrayList([]const u8),
         globals: std.ArrayList(i32),
@@ -150,7 +150,7 @@ pub const VirtualMachine = struct {
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
-    var allocator = &arena.allocator;
+    const allocator = arena.allocator();
 
     var arg_it = std.process.args();
     _ = try arg_it.next(allocator) orelse unreachable; // program name
@@ -236,16 +236,16 @@ pub const Op = enum(u8) {
 
 // 100 lines of code to load serialized bytecode, eh
 fn loadBytecode(
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
     str: []const u8,
     string_pool: *std.ArrayList([]const u8),
     globals: *std.ArrayList(i32),
 ) !std.ArrayList(u8) {
     var result = std.ArrayList(u8).init(allocator);
-    var line_it = std.mem.split(str, "\n");
+    var line_it = std.mem.split(u8, str, "\n");
     while (line_it.next()) |line| {
         if (std.mem.indexOf(u8, line, "halt")) |_| {
-            var tok_it = std.mem.tokenize(line, " ");
+            var tok_it = std.mem.tokenize(u8, line, " ");
             const size = try std.fmt.parseInt(usize, tok_it.next().?, 10);
             try result.resize(size + 1);
             break;
@@ -258,7 +258,7 @@ fn loadBytecode(
     const globals_size = try std.fmt.parseInt(usize, first_line["Datasize: ".len..strings_index], 10);
     const string_pool_size = try std.fmt.parseInt(usize, first_line[strings_index + " Strings: ".len ..], 10);
     try globals.resize(globals_size);
-    try string_pool.ensureCapacity(string_pool_size);
+    try string_pool.ensureTotalCapacity(string_pool_size);
     var string_cnt: usize = 0;
     while (string_cnt < string_pool_size) : (string_cnt += 1) {
         const line = line_it.next().?;
@@ -288,7 +288,7 @@ fn loadBytecode(
     while (line_it.next()) |line| {
         if (line.len == 0) break;
 
-        var tok_it = std.mem.tokenize(line, " ");
+        var tok_it = std.mem.tokenize(u8, line, " ");
         const address = try std.fmt.parseInt(usize, tok_it.next().?, 10);
         const op = Op.fromString(tok_it.next().?);
         result.items[address] = @enumToInt(op);
@@ -326,7 +326,7 @@ const testing = std.testing;
 test "examples" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
-    var allocator = &arena.allocator;
+    const allocator = arena.allocator();
 
     {
         const example_input_path = "examples/codegened0.txt";

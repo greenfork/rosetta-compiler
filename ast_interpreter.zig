@@ -8,7 +8,7 @@ pub const ASTInterpreter = struct {
 
     const Self = @This();
 
-    pub fn init(allocator: *std.mem.Allocator) Self {
+    pub fn init(allocator: std.mem.Allocator) Self {
         return ASTInterpreter{
             .output = std.ArrayList(u8).init(allocator),
             .globals = std.StringHashMap(NodeValue).init(allocator),
@@ -136,7 +136,7 @@ pub const ASTInterpreter = struct {
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
-    var allocator = &arena.allocator;
+    const allocator = arena.allocator();
 
     var arg_it = std.process.args();
     _ = try arg_it.next(allocator) orelse unreachable; // program name
@@ -234,13 +234,13 @@ pub const Tree = struct {
     typ: NodeType = .unknown,
     value: ?NodeValue = null,
 
-    fn makeNode(allocator: *std.mem.Allocator, typ: NodeType, left: ?*Tree, right: ?*Tree) !*Tree {
+    fn makeNode(allocator: std.mem.Allocator, typ: NodeType, left: ?*Tree, right: ?*Tree) !*Tree {
         const result = try allocator.create(Tree);
         result.* = Tree{ .left = left, .right = right, .typ = typ };
         return result;
     }
 
-    fn makeLeaf(allocator: *std.mem.Allocator, typ: NodeType, value: ?NodeValue) !*Tree {
+    fn makeLeaf(allocator: std.mem.Allocator, typ: NodeType, value: ?NodeValue) !*Tree {
         const result = try allocator.create(Tree);
         result.* = Tree{ .left = null, .right = null, .typ = typ, .value = value };
         return result;
@@ -250,21 +250,21 @@ pub const Tree = struct {
 const LoadASTError = error{OutOfMemory} || std.fmt.ParseIntError;
 
 fn loadAST(
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
     str: []const u8,
     string_pool: *std.ArrayList([]const u8),
 ) LoadASTError!?*Tree {
-    var line_it = std.mem.split(str, "\n");
+    var line_it = std.mem.split(u8, str, "\n");
     return try loadASTHelper(allocator, &line_it, string_pool);
 }
 
 fn loadASTHelper(
-    allocator: *std.mem.Allocator,
-    line_it: *std.mem.SplitIterator,
+    allocator: std.mem.Allocator,
+    line_it: *std.mem.SplitIterator(u8),
     string_pool: *std.ArrayList([]const u8),
 ) LoadASTError!?*Tree {
     if (line_it.next()) |line| {
-        var tok_it = std.mem.tokenize(line, " ");
+        var tok_it = std.mem.tokenize(u8, line, " ");
         const tok_str = tok_it.next().?;
         if (tok_str[0] == ';') return null;
 
@@ -319,7 +319,7 @@ const testing = std.testing;
 test "examples" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
-    var allocator = &arena.allocator;
+    const allocator = arena.allocator();
 
     {
         const example_input_path = "examples/parsed0.txt";

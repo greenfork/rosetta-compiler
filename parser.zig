@@ -31,11 +31,11 @@ pub const ParserError = error{
 pub const Parser = struct {
     token_it: LexerOutputTokenizer,
     curr: Token,
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
 
     const Self = @This();
 
-    pub fn init(allocator: *std.mem.Allocator, str: []const u8) Self {
+    pub fn init(allocator: std.mem.Allocator, str: []const u8) Self {
         return Self{
             .token_it = LexerOutputTokenizer.init(str),
             .curr = Token{ .line = 0, .col = 0, .typ = .unknown },
@@ -225,7 +225,7 @@ pub const Parser = struct {
     }
 };
 
-pub fn parse(allocator: *std.mem.Allocator, str: []const u8) !?*Tree {
+pub fn parse(allocator: std.mem.Allocator, str: []const u8) !?*Tree {
     var parser = Parser.init(allocator, str);
     return try parser.parse();
 }
@@ -233,7 +233,7 @@ pub fn parse(allocator: *std.mem.Allocator, str: []const u8) !?*Tree {
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
-    var allocator = &arena.allocator;
+    const allocator = arena.allocator();
 
     var arg_it = std.process.args();
     _ = try arg_it.next(allocator) orelse unreachable; // program name
@@ -367,7 +367,7 @@ pub const NodeType = enum {
     }
 };
 
-fn astToFlattenedString(allocator: *std.mem.Allocator, tree: ?*Tree) ![]const u8 {
+fn astToFlattenedString(allocator: std.mem.Allocator, tree: ?*Tree) ![]const u8 {
     var result = std.ArrayList(u8).init(allocator);
     var writer = result.writer();
     try treeToString(allocator, writer, tree);
@@ -462,7 +462,7 @@ pub const Token = struct {
 const TreeToStringError = error{OutOfMemory};
 
 fn treeToString(
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
     writer: std.ArrayList(u8).Writer,
     tree: ?*Tree,
 ) TreeToStringError!void {
@@ -503,18 +503,18 @@ fn treeToString(
 }
 
 pub const LexerOutputTokenizer = struct {
-    it: std.mem.SplitIterator,
+    it: std.mem.SplitIterator(u8),
 
     const Self = @This();
 
     pub fn init(str: []const u8) Self {
-        return Self{ .it = std.mem.split(str, "\n") };
+        return Self{ .it = std.mem.split(u8, str, "\n") };
     }
 
     pub fn next(self: *Self) std.fmt.ParseIntError!?Token {
         if (self.it.next()) |line| {
             if (line.len == 0) return null;
-            var tokens_it = std.mem.tokenize(line, " ");
+            var tokens_it = std.mem.tokenize(u8, line, " ");
             const lineNumber = try std.fmt.parseInt(usize, tokens_it.next().?, 10);
             const colNumber = try std.fmt.parseInt(usize, tokens_it.next().?, 10);
             const typ_text = tokens_it.next().?;
@@ -542,7 +542,7 @@ pub const LexerOutputTokenizer = struct {
     }
 };
 
-fn stringToTokenList(allocator: *std.mem.Allocator, str: []const u8) !std.ArrayList(Token) {
+fn stringToTokenList(allocator: std.mem.Allocator, str: []const u8) !std.ArrayList(Token) {
     var result = std.ArrayList(Token).init(allocator);
     var lexer_output_it = LexerOutputTokenizer.init(str);
     while (try lexer_output_it.next()) |token| {
@@ -556,7 +556,7 @@ const testing = std.testing;
 test "stringToTokenList" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
-    var allocator = &arena.allocator;
+    const allocator = arena.allocator();
     const str: []const u8 = "\"Hello, World!\\n\"";
     const tok_array = [6]Token{
         Token{ .line = 4, .col = 1, .typ = .kw_print },
@@ -593,7 +593,7 @@ test "stringToTokenList" {
     try testing.expectEqual(token_list.items[5], result.items[5]);
 }
 
-fn squishSpaces(allocator: *std.mem.Allocator, str: []const u8) ![]u8 {
+fn squishSpaces(allocator: std.mem.Allocator, str: []const u8) ![]u8 {
     var result = std.ArrayList(u8).init(allocator);
     var was_space = false;
     for (str) |ch| {
@@ -616,7 +616,7 @@ fn squishSpaces(allocator: *std.mem.Allocator, str: []const u8) ![]u8 {
 test "examples" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
-    var allocator = &arena.allocator;
+    const allocator = arena.allocator();
 
     {
         const example_input_path = "examples/lexed0.txt";
